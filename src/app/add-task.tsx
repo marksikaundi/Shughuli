@@ -61,22 +61,26 @@ export default function AddTaskScreen() {
     }
   }
 
-  function save() {
+  async function save() {
     const nextTitle = title.trim();
     if (!nextTitle) {
       setError('Add a task title');
       return;
     }
-    addTask({
-      title: nextTitle,
-      description: description.trim(),
-      date: toDateKey(today),
-      start: '10:00',
-      priority,
-      project,
-      tags,
-    });
-    leave();
+    try {
+      await addTask({
+        title: nextTitle,
+        description: description.trim(),
+        date: toDateKey(today),
+        start: '10:00',
+        priority,
+        project,
+        tags,
+      });
+      leave();
+    } catch {
+      setError('Could not save this task on the device.');
+    }
   }
 
   return (

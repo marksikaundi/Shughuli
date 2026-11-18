@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar-stack';
@@ -7,18 +7,19 @@ import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { PEOPLE } from '@/data/people';
 import { useTasks } from '@/data/tasks';
-
-const ROWS: { icon: IconName; label: string; value: string }[] = [
-  { icon: 'bell', label: 'Notifications', value: 'On' },
-  { icon: 'clock', label: 'Focus hours', value: '9:00 – 1:00' },
-  { icon: 'moon', label: 'Appearance', value: 'Light' },
-];
+import { countSavedNotes } from '@/lib/notes';
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
   const open = tasks.filter((task) => task.status !== 'done' && task.kind === 'task').length;
   const meetings = tasks.filter((task) => task.kind === 'meeting').length;
+  const notes = countSavedNotes();
+  const rows: { icon: IconName; label: string; value: string }[] = [
+    { icon: 'bell', label: 'Reminders', value: Platform.OS === 'web' ? 'On this device' : 'Local only' },
+    { icon: 'folder', label: 'Notes', value: notes == null ? 'On this device' : `${notes} saved` },
+    { icon: 'clock', label: 'Focus hours', value: '9:00 – 1:00' },
+  ];
 
   return (
     <Screen>
@@ -42,8 +43,8 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.card}>
-          {ROWS.map((row, index) => (
-            <View key={row.label} style={[styles.row, index < ROWS.length - 1 && styles.rowBorder]}>
+          {rows.map((row, index) => (
+            <View key={row.label} style={[styles.row, index < rows.length - 1 && styles.rowBorder]}>
               <View style={styles.rowIcon}>
                 <Icon name={row.icon} size={16} color={Palette.ink} />
               </View>
