@@ -1,3 +1,4 @@
+import * as Device from 'expo-device';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -6,7 +7,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/icon';
 import { Screen } from '@/components/screen';
-import { TextPrompt } from '@/components/settings/controls';
 import { settingsStyles, useSave } from '@/components/settings/page';
 import { ACCENTS } from '@/data/preferences';
 import { Layout, cardShadow } from '@/constants/palette';
@@ -21,10 +21,10 @@ export default function SettingsScreen() {
   const text = useCopy();
   const prefs = usePreferencesStore((state) => state.prefs);
   const save = useSave();
-  const [nameOpen, setNameOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
   useScreenStatusBar(theme.dark);
-  const letter = prefs.displayName.trim().charAt(0).toUpperCase() || 'S';
+  const deviceName = runningDeviceName(text.thisDevice);
+  const letter = deviceName.trim().charAt(0).toUpperCase() || 'S';
   const destinations: { icon: IconName; label: string; note: string; href: '/settings/appearance' | '/settings/productivity' | '/settings/focus' | '/settings/privacy' | '/settings/data' | '/about' }[] = [
     { icon: 'palette', label: text.appearance, note: text.appearanceNote, href: '/settings/appearance' },
     { icon: 'done', label: text.productivity, note: text.productivityNote, href: '/settings/productivity' },
@@ -59,45 +59,32 @@ export default function SettingsScreen() {
             )}
           </Pressable>
           <View style={styles.profileCopy}>
-            <Pressable accessibilityRole="button" accessibilityLabel={text.displayName} onPress={() => setNameOpen(true)}>
-              <Text style={[styles.name, { color: theme.colors.ink, fontSize: 22 * theme.scale }]}>{prefs.displayName || text.yourName}</Text>
-            </Pressable>
+            <Text numberOfLines={2} style={[styles.name, { color: theme.colors.ink, fontSize: 22 * theme.scale }]}>
+              {deviceName}
+            </Text>
             <Text style={[styles.kicker, { color: theme.colors.muted, fontSize: 14 * theme.scale }]}>{text.onDevice}</Text>
           </View>
         </View>
 
-        <View style={styles.list}>
+        <View style={styles.grid}>
           {destinations.map((item) => (
-            <Pressable
-              key={item.href}
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-              onPress={() => router.push(item.href)}
-              style={({ pressed }) => [styles.destination, { backgroundColor: theme.colors.card }, pressed && styles.pressed]}>
-              <View style={[styles.mark, { backgroundColor: theme.colors.icon }]}>
-                <Icon name={item.icon} size={20} color={theme.colors.ink} />
-              </View>
-              <View style={styles.destinationCopy}>
-                <Text style={[styles.destinationTitle, { color: theme.colors.ink, fontSize: 17 * theme.scale }]}>{item.label}</Text>
-                <Text style={[styles.destinationNote, { color: theme.colors.muted, fontSize: 13 * theme.scale, lineHeight: 18 * theme.scale }]}>{item.note}</Text>
-              </View>
-              <Icon name="chevron" size={16} color={theme.colors.faint} />
-            </Pressable>
+            <View key={item.href} style={styles.cell}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                onPress={() => router.push(item.href)}
+                style={({ pressed }) => [styles.destination, { backgroundColor: theme.colors.card }, pressed && styles.pressed]}>
+                <View style={[styles.mark, { backgroundColor: theme.colors.icon }]}>
+                  <Icon name={item.icon} size={20} color={theme.colors.ink} />
+                </View>
+                <Text style={[styles.destinationTitle, { color: theme.colors.ink, fontSize: 16 * theme.scale }]}>{item.label}</Text>
+                <Text numberOfLines={3} style={[styles.destinationNote, { color: theme.colors.muted, fontSize: 13 * theme.scale, lineHeight: 18 * theme.scale }]}>{item.note}</Text>
+              </Pressable>
+            </View>
           ))}
         </View>
       </ScrollView>
 
-      <TextPrompt
-        visible={nameOpen}
-        title={text.displayName}
-        initial={prefs.displayName}
-        placeholder={text.namePlaceholder}
-        onClose={() => setNameOpen(false)}
-        onSave={(displayName) => {
-          setNameOpen(false);
-          void save({ displayName });
-        }}
-      />
       <Modal visible={avatarOpen} transparent animationType="fade" onRequestClose={() => setAvatarOpen(false)}>
         <Pressable style={[settingsStyles.overlay, { backgroundColor: theme.colors.overlay }]} onPress={() => setAvatarOpen(false)}>
           <Pressable style={[settingsStyles.sheet, { backgroundColor: theme.colors.card }]} onPress={() => undefined}>
@@ -139,6 +126,16 @@ export default function SettingsScreen() {
       </Modal>
     </Screen>
   );
+}
+
+function runningDeviceName(fallback: string) {
+  const name = Device.deviceName?.trim();
+  if (name) return name;
+  const model = [Device.manufacturer, Device.modelName].filter((part) => part?.trim()).join(' ');
+  if (model) return model;
+  const os = Device.osName?.trim();
+  if (os) return os;
+  return fallback;
 }
 
 const styles = StyleSheet.create({
@@ -183,32 +180,35 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     color: '#161616',
   },
-  list: {
-    marginTop: 18,
-    gap: 10,
+  grid: {
+    marginTop: 14,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+  },
+  cell: {
+    width: '50%',
+    padding: 6,
   },
   destination: {
+    flex: 1,
     borderRadius: 24,
-    paddingVertical: 14,
     paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    paddingTop: 14,
+    paddingBottom: 16,
     ...cardShadow,
   },
   mark: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  destinationCopy: {
-    flex: 1,
-    gap: 2,
+    marginBottom: 12,
   },
   destinationTitle: {
     fontWeight: 700,
+    letterSpacing: -0.2,
   },
   destinationNote: {
     fontWeight: 500,

@@ -3,6 +3,7 @@ import { usePreferencesStore } from '@/store/preferences';
 const en = {
   settings: 'Settings',
   onDevice: 'On this device',
+  thisDevice: 'This device',
   appearanceNote: 'Theme, type, language, and the clock',
   productivityNote: 'The week, new tasks, and reminders',
   focusNote: 'Work, breaks, and the timer',
@@ -175,6 +176,7 @@ const en = {
 const sw: { [K in keyof typeof en]: string } = {
   settings: 'Mipangilio',
   onDevice: 'Kwenye kifaa hiki',
+  thisDevice: 'Kifaa hiki',
   appearanceNote: 'Mwanga, maandishi, lugha, na saa',
   productivityNote: 'Wiki, kazi mpya, na vikumbusho',
   focusNote: 'Kazi, mapumziko, na kipima muda',
