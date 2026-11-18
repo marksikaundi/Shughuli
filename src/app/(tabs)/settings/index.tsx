@@ -4,31 +4,35 @@ import { useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Icon, type IconName } from '@/components/icon';
 import { Screen } from '@/components/screen';
-import { SettingsRow, SettingsSection, TextPrompt } from '@/components/settings/controls';
+import { TextPrompt } from '@/components/settings/controls';
 import { settingsStyles, useSave } from '@/components/settings/page';
 import { ACCENTS } from '@/data/preferences';
-import { Layout } from '@/constants/palette';
+import { Layout, cardShadow } from '@/constants/palette';
 import { useScreenStatusBar, useSettingsTheme } from '@/hooks/use-settings-theme';
 import { chooseAvatar, removeAvatar } from '@/lib/device-data';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
-import { useTaskStore } from '@/store/tasks';
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const theme = useSettingsTheme();
   const text = useCopy();
   const prefs = usePreferencesStore((state) => state.prefs);
-  const tasks = useTaskStore((state) => state.tasks.filter((task) => task.kind === 'task').length);
   const save = useSave();
   const [nameOpen, setNameOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
   useScreenStatusBar(theme.dark);
   const letter = prefs.displayName.trim().charAt(0).toUpperCase() || 'S';
-  const themeLabel = prefs.theme === 'dark' ? text.themeDark : prefs.theme === 'system' ? text.themeSystem : text.themeLight;
-  const timeoutLabel =
-    prefs.lockTimeout === 0 ? text.immediately : prefs.lockTimeout === 5 ? text.afterFive : prefs.lockTimeout === 15 ? text.afterFifteen : text.afterMinute;
+  const destinations: { icon: IconName; label: string; note: string; href: '/settings/appearance' | '/settings/productivity' | '/settings/focus' | '/settings/privacy' | '/settings/data' | '/about' }[] = [
+    { icon: 'palette', label: text.appearance, note: text.appearanceNote, href: '/settings/appearance' },
+    { icon: 'done', label: text.productivity, note: text.productivityNote, href: '/settings/productivity' },
+    { icon: 'timer', label: text.focus, note: text.focusNote, href: '/settings/focus' },
+    { icon: 'shield', label: text.privacy, note: text.privacyNote, href: '/settings/privacy' },
+    { icon: 'storage', label: text.data, note: text.dataNote, href: '/settings/data' },
+    { icon: 'info', label: text.about, note: text.aboutNote, href: '/about' },
+  ];
 
   return (
     <Screen>
@@ -40,45 +44,47 @@ export default function SettingsScreen() {
           paddingBottom: insets.bottom + Layout.tabClearance,
           paddingHorizontal: Layout.padding,
         }}>
-        <View style={styles.header}>
-          <View style={styles.headerCopy}>
-            <Text style={[styles.kicker, { color: theme.colors.muted, fontSize: 13 * theme.scale }]}>{text.onDevice}</Text>
-            <Text style={[styles.title, { color: theme.colors.ink, fontSize: 34 * theme.scale }]}>{text.settings}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel={text.displayName} onPress={() => setNameOpen(true)}>
-              <Text style={[styles.name, { color: theme.colors.muted, fontSize: 15 * theme.scale }]}>{prefs.displayName || text.yourName}</Text>
-            </Pressable>
-          </View>
+        <Text style={[styles.title, { color: theme.colors.ink, fontSize: 34 * theme.scale }]}>{text.settings}</Text>
+
+        <View style={[styles.profile, { backgroundColor: theme.colors.card }]}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={text.avatar}
             onPress={() => setAvatarOpen(true)}
-            style={[styles.avatar, { backgroundColor: ACCENTS.find((item) => item.id === prefs.avatarColor)?.color ?? '#C8F06E' }]}>
+            style={[styles.avatar, { backgroundColor: ACCENTS.find((item) => item.id === prefs.avatarColor)?.color ?? '#5B8DEF' }]}>
             {prefs.avatarUri ? (
               <Image source={{ uri: prefs.avatarUri }} style={styles.avatarImage} contentFit="cover" />
             ) : (
               <Text style={styles.avatarLetter}>{letter}</Text>
             )}
           </Pressable>
+          <View style={styles.profileCopy}>
+            <Pressable accessibilityRole="button" accessibilityLabel={text.displayName} onPress={() => setNameOpen(true)}>
+              <Text style={[styles.name, { color: theme.colors.ink, fontSize: 22 * theme.scale }]}>{prefs.displayName || text.yourName}</Text>
+            </Pressable>
+            <Text style={[styles.kicker, { color: theme.colors.muted, fontSize: 14 * theme.scale }]}>{text.onDevice}</Text>
+          </View>
         </View>
 
-        <SettingsSection>
-          <SettingsRow icon="palette" label={text.appearance} value={themeLabel} onPress={() => router.push('/settings/appearance')} />
-          <SettingsRow
-            icon="done"
-            label={text.productivity}
-            value={prefs.weekStartsOn === 'sunday' ? text.sunday : text.monday}
-            onPress={() => router.push('/settings/productivity')}
-          />
-          <SettingsRow icon="timer" label={text.focus} value={`${prefs.workMinutes} ${text.minutes}`} onPress={() => router.push('/settings/focus')} />
-          <SettingsRow
-            icon="shield"
-            label={text.privacy}
-            value={prefs.appLockEnabled ? timeoutLabel : undefined}
-            onPress={() => router.push('/settings/privacy')}
-          />
-          <SettingsRow icon="storage" label={text.data} value={String(tasks)} onPress={() => router.push('/settings/data')} />
-          <SettingsRow icon="info" label={text.about} onPress={() => router.push('/about')} border={false} />
-        </SettingsSection>
+        <View style={styles.list}>
+          {destinations.map((item) => (
+            <Pressable
+              key={item.href}
+              accessibilityRole="button"
+              accessibilityLabel={item.label}
+              onPress={() => router.push(item.href)}
+              style={({ pressed }) => [styles.destination, { backgroundColor: theme.colors.card }, pressed && styles.pressed]}>
+              <View style={[styles.mark, { backgroundColor: theme.colors.icon }]}>
+                <Icon name={item.icon} size={20} color={theme.colors.ink} />
+              </View>
+              <View style={styles.destinationCopy}>
+                <Text style={[styles.destinationTitle, { color: theme.colors.ink, fontSize: 17 * theme.scale }]}>{item.label}</Text>
+                <Text style={[styles.destinationNote, { color: theme.colors.muted, fontSize: 13 * theme.scale, lineHeight: 18 * theme.scale }]}>{item.note}</Text>
+              </View>
+              <Icon name="chevron" size={16} color={theme.colors.faint} />
+            </Pressable>
+          ))}
+        </View>
       </ScrollView>
 
       <TextPrompt
@@ -136,41 +142,78 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
+  title: {
+    fontWeight: 700,
+    letterSpacing: -0.8,
+  },
+  profile: {
+    marginTop: 20,
+    borderRadius: 28,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
+    ...cardShadow,
   },
-  headerCopy: {
+  profileCopy: {
     flex: 1,
+    gap: 4,
+  },
+  name: {
+    fontWeight: 700,
+    letterSpacing: -0.4,
   },
   kicker: {
     fontWeight: 600,
   },
-  title: {
-    marginTop: 4,
-    fontWeight: 700,
-    letterSpacing: -0.8,
-  },
-  name: {
-    marginTop: 4,
-    fontWeight: 600,
-  },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   avatarImage: {
-    width: 64,
-    height: 64,
+    width: 72,
+    height: 72,
   },
   avatarLetter: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: 700,
     color: '#161616',
+  },
+  list: {
+    marginTop: 18,
+    gap: 10,
+  },
+  destination: {
+    borderRadius: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    ...cardShadow,
+  },
+  mark: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  destinationCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  destinationTitle: {
+    fontWeight: 700,
+  },
+  destinationNote: {
+    fontWeight: 500,
+  },
+  pressed: {
+    opacity: 0.86,
   },
 });
