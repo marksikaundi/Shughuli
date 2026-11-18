@@ -3,8 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar } from '@/components/avatar-stack';
-import { AvatarStack } from '@/components/avatar-stack';
+import { Avatar, AvatarStack } from '@/components/avatar-stack';
 import { Icon, IconButton } from '@/components/icon';
 import { ProgressRing } from '@/components/progress-ring';
 import { Screen } from '@/components/screen';
@@ -12,7 +11,7 @@ import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { PEOPLE } from '@/data/people';
 import { formatClock, toDateKey, useTasks, type Task, type TaskStatus } from '@/data/tasks';
 
-const FILTERS: { id: TaskStatus; label: string }[] = [
+const FILTERS: { id: Exclude<TaskStatus, 'done'>; label: string }[] = [
   { id: 'todo', label: 'To Do' },
   { id: 'in_progress', label: 'In Progress' },
   { id: 'in_review', label: 'In Review' },
@@ -27,7 +26,7 @@ const PRIORITY_TONE = {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
-  const [filter, setFilter] = useState<TaskStatus>('todo');
+  const [filter, setFilter] = useState<TaskStatus | 'all'>('todo');
   const today = toDateKey(new Date());
 
   const todaysTasks = useMemo(
@@ -43,7 +42,7 @@ export default function HomeScreen() {
     };
   }, [todaysTasks]);
 
-  const visible = filter ? todaysTasks.filter((task) => task.status === filter) : todaysTasks;
+  const visible = filter === 'all' ? todaysTasks : todaysTasks.filter((task) => task.status === filter);
 
   return (
     <Screen>
@@ -87,7 +86,7 @@ export default function HomeScreen() {
 
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>Today&apos;s Tasks</Text>
-          <Pressable onPress={() => setFilter('todo')} hitSlop={8}>
+          <Pressable onPress={() => setFilter('all')} hitSlop={8}>
             <Text style={styles.viewAll}>View All</Text>
           </Pressable>
         </View>

@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   headerTitleWrap: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

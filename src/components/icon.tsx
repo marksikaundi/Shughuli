@@ -28,7 +28,7 @@ const ICONS = {
   folder: { ios: 'folder.fill', android: 'folder', web: 'folder' },
   tag: { ios: 'tag.fill', android: 'sell', web: 'sell' },
   chevronDown: { ios: 'chevron.down', android: 'expand_more', web: 'expand_more' },
-  moon: { ios: 'moon.fill', android: 'light_mode', web: 'light_mode' },
+  moon: { ios: 'moon.fill', android: 'dark_mode', web: 'dark_mode' },
 } as const;
 
 export type IconName = keyof typeof ICONS;
