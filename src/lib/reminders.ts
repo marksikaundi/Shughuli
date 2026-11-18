@@ -15,19 +15,26 @@ if (Platform.OS !== 'web') {
   });
 }
 
+let channelReady = Platform.OS !== 'android';
+
 export async function prepareReminders() {
   if (Platform.OS === 'web') return;
 
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('reminders', {
-      name: 'Task reminders',
-      importance: AndroidImportance.DEFAULT,
-    });
-  }
+  try {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('reminders', {
+        name: 'Task reminders',
+        importance: AndroidImportance.DEFAULT,
+      });
+      channelReady = true;
+    }
 
-  const current = await Notifications.getPermissionsAsync();
-  if (current.status !== 'granted') {
-    await Notifications.requestPermissionsAsync();
+    const current = await Notifications.getPermissionsAsync();
+    if (current.status !== 'granted') {
+      await Notifications.requestPermissionsAsync();
+    }
+  } catch {
+    channelReady = false;
   }
 }
 
@@ -50,7 +57,7 @@ export async function scheduleTaskReminder(task: Task) {
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: when,
-        channelId: 'reminders',
+        ...(channelReady ? { channelId: 'reminders' } : {}),
       },
     });
   } catch {

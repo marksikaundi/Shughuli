@@ -24,8 +24,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   ready: false,
   error: null,
   hydrate: () => {
-    if (get().ready) return Promise.resolve();
-    hydrating ??= loadTasks(set);
+    if (get().ready && !get().error) return Promise.resolve();
+    hydrating ??= loadTasks(set).finally(() => {
+      if (get().error) hydrating = null;
+    });
     return hydrating;
   },
   addTask: async (draft) => {
