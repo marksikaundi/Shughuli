@@ -27,10 +27,16 @@ export default function HomeScreen() {
   const [filter, setFilter] = useState<TaskStatus | 'all'>('todo');
   const today = toDateKey(new Date());
 
-  const todaysTasks = useMemo(
-    () => tasks.filter((task) => task.date === today && task.kind === 'task' && task.status !== 'done'),
+  const todayTasks = useMemo(
+    () => tasks.filter((task) => task.date === today && task.kind === 'task'),
     [tasks, today],
   );
+  const todaysTasks = useMemo(
+    () => todayTasks.filter((task) => task.status !== 'done'),
+    [todayTasks],
+  );
+  const completed = todayTasks.length - todaysTasks.length;
+  const progress = todayTasks.length === 0 ? 0 : completed / todayTasks.length;
 
   const counts = useMemo(() => {
     return {
@@ -68,11 +74,11 @@ export default function HomeScreen() {
         <Text style={styles.headline}>{"Let's Make\nToday Productive"}</Text>
 
         <View style={styles.progressCard}>
-          <ProgressRing progress={0.72} />
+          <ProgressRing progress={progress} />
           <View style={styles.stats}>
-            <Stat icon="grid" value="12" label="Total Task" />
-            <Stat icon="done" value="12" label="Completed Task" />
-            <Stat icon="pending" value="12" label="Pending Task" />
+            <Stat icon="grid" value={String(todayTasks.length)} label="Total Task" />
+            <Stat icon="done" value={String(completed)} label="Completed Task" />
+            <Stat icon="pending" value={String(todaysTasks.length)} label="Pending Task" />
           </View>
         </View>
 

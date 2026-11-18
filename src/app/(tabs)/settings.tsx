@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
-import { useTasks } from '@/data/tasks';
+import { startOfWeek, toDateKey, useTasks } from '@/data/tasks';
 import { countSavedNotes } from '@/lib/notes';
 
 export default function SettingsScreen() {
@@ -12,11 +12,11 @@ export default function SettingsScreen() {
   const { tasks } = useTasks();
   const open = tasks.filter((task) => task.status !== 'done' && task.kind === 'task').length;
   const meetings = tasks.filter((task) => task.kind === 'meeting').length;
+  const week = weekProgress(tasks);
   const notes = countSavedNotes();
   const rows: { icon: IconName; label: string; value: string }[] = [
     { icon: 'bell', label: 'Reminders', value: Platform.OS === 'web' ? 'On this device' : 'Local only' },
     { icon: 'folder', label: 'Notes', value: notes == null ? 'On this device' : `${notes} saved` },
-    { icon: 'clock', label: 'Focus hours', value: '9:00 – 1:00' },
   ];
 
   return (
@@ -34,7 +34,7 @@ export default function SettingsScreen() {
         <View style={styles.stats}>
           <Stat value={String(open)} label="Open tasks" />
           <Stat value={String(meetings)} label="Meetings" />
-          <Stat value="72%" label="This week" />
+          <Stat value={`${week}%`} label="This week" />
         </View>
 
         <View style={styles.card}>
@@ -51,6 +51,21 @@ export default function SettingsScreen() {
       </ScrollView>
     </Screen>
   );
+}
+
+function weekProgress(tasks: ReturnType<typeof useTasks>['tasks']) {
+  const start = startOfWeek(new Date());
+  const keys = new Set(
+    Array.from({ length: 7 }, (_, index) => {
+      const day = new Date(start);
+      day.setDate(start.getDate() + index);
+      return toDateKey(day);
+    }),
+  );
+  const weekTasks = tasks.filter((task) => task.kind === 'task' && keys.has(task.date));
+  if (weekTasks.length === 0) return 0;
+  const done = weekTasks.filter((task) => task.status === 'done').length;
+  return Math.round((done / weekTasks.length) * 100);
 }
 
 function Stat({ value, label }: { value: string; label: string }) {

@@ -1,13 +1,27 @@
+import { inArray } from 'drizzle-orm';
+import * as Notifications from 'expo-notifications';
 import { create } from 'zustand';
 
 import { getDb } from '@/db/client';
 import { migrateDb } from '@/db/migrate';
 import { taskTable } from '@/db/schema';
-import { seedTasks } from '@/db/seed';
 import { addMinutes, type Priority, type Task, type TaskCategory, type TaskDraft, type TaskKind, type TaskStatus } from '@/data/model';
 import type { PersonId } from '@/data/people';
-import { saveTaskNote } from '@/lib/notes';
+import { deleteTaskNote, saveTaskNote } from '@/lib/notes';
 import { prepareReminders, scheduleTaskReminder } from '@/lib/reminders';
+
+const SAMPLE_TASK_IDS = [
+  'meeting',
+  'landing',
+  'checklist',
+  'slides',
+  'references',
+  'dribbble',
+  'motion',
+  'illustrations',
+  'header',
+  'a11y',
+];
 
 type TaskState = {
   tasks: Task[];
@@ -47,12 +61,7 @@ async function loadTasks(set: (partial: Partial<TaskState>) => void) {
   try {
     await migrateDb();
     await prepareReminders();
-    const existing = await readTasks();
-    if (existing.length === 0) {
-      for (const task of seedTasks()) {
-        await rememberTask(task);
-      }
-    }
+    await removeSampleTasks();
     set({ tasks: await readTasks(), ready: true, error: null });
   } catch (error) {
     set({
@@ -60,6 +69,36 @@ async function loadTasks(set: (partial: Partial<TaskState>) => void) {
       error: error instanceof Error ? error.message : 'Could not open the on-device database.',
     });
   }
+}
+
+async function removeSampleTasks() {
+  const db = await getDb();
+  const rows = db
+    .select()
+    .from(taskTable)
+    .all()
+    .filter((row) => SAMPLE_TASK_IDS.includes(row.id));
+  if (rows.length === 0) return;
+
+  for (const row of rows) {
+    if (row.notificationId) {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(row.notificationId);
+      } catch {
+        // The reminder may already be gone.
+      }
+    }
+    deleteTaskNote(row.id);
+  }
+
+  db.delete(taskTable)
+    .where(
+      inArray(
+        taskTable.id,
+        rows.map((row) => row.id),
+      ),
+    )
+    .run();
 }
 
 async function rememberTask(task: Task) {
@@ -134,8 +173,8 @@ function draftToTask(draft: TaskDraft): Task {
     category: 'work',
     project: draft.project,
     tags: draft.tags,
-    people: ['amira', 'jules'],
-    extraPeople: 2,
+    people: [],
+    extraPeople: 0,
     scheduled: true,
     starred: false,
     kind: 'task',

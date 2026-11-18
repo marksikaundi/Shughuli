@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,15 +8,25 @@ import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { useTasks } from '@/data/tasks';
 
-const PROJECTS = [
-  { name: 'Website Redesign', detail: 'Landing page, header, and launch checklist', tasks: 8, done: 5, tint: Palette.lime },
-  { name: 'Mobile App', detail: 'Motion specs and the Friday review deck', tasks: 6, done: 2, tint: Palette.medium },
-  { name: 'Brand System', detail: 'Dribbble series, type, and illustrations', tasks: 4, done: 3, tint: '#C9B6F4' },
-];
+const TINTS = [Palette.lime, Palette.medium, '#C9B6F4'];
 
 export default function ProjectsScreen() {
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
+  const projects = useMemo(() => {
+    const names = [...new Set(tasks.map((task) => task.project.trim()).filter(Boolean))];
+    return names.map((name, index) => {
+      const items = tasks.filter((task) => task.project === name && task.kind === 'task');
+      const done = items.filter((task) => task.status === 'done').length;
+      return {
+        name,
+        open: items.length - done,
+        done,
+        total: items.length,
+        tint: TINTS[index % TINTS.length],
+      };
+    });
+  }, [tasks]);
 
   return (
     <Screen>
@@ -39,30 +50,35 @@ export default function ProjectsScreen() {
           />
         </View>
 
-        <View style={styles.list}>
-          {PROJECTS.map((project) => {
-            const live = tasks.filter((task) => task.project === project.name && task.status !== 'done').length;
-            const progress = project.done / project.tasks;
-            return (
-              <View key={project.name} style={styles.card}>
-                <View style={styles.cardTop}>
-                  <View style={[styles.swatch, { backgroundColor: project.tint }]}>
-                    <Icon name="folder" size={16} color={Palette.ink} />
+        {projects.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyTitle}>No projects yet</Text>
+            <Text style={styles.emptyBody}>Name a project when you add a task, and it will show up here.</Text>
+          </View>
+        ) : (
+          <View style={styles.list}>
+            {projects.map((project) => {
+              const progress = project.total === 0 ? 0 : project.done / project.total;
+              return (
+                <View key={project.name} style={styles.card}>
+                  <View style={styles.cardTop}>
+                    <View style={[styles.swatch, { backgroundColor: project.tint }]}>
+                      <Icon name="folder" size={16} color={Palette.ink} />
+                    </View>
+                    <Text style={styles.count}>{project.open} open</Text>
                   </View>
-                  <Text style={styles.count}>{live} open</Text>
+                  <Text style={styles.name}>{project.name}</Text>
+                  <View style={styles.track}>
+                    <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: project.tint }]} />
+                  </View>
+                  <Text style={styles.meta}>
+                    {project.done} of {project.total} done
+                  </Text>
                 </View>
-                <Text style={styles.name}>{project.name}</Text>
-                <Text style={styles.detail}>{project.detail}</Text>
-                <View style={styles.track}>
-                  <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: project.tint }]} />
-                </View>
-                <Text style={styles.meta}>
-                  {project.done} of {project.tasks} milestones
-                </Text>
-              </View>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
     </Screen>
   );
@@ -89,6 +105,24 @@ const styles = StyleSheet.create({
   list: {
     marginTop: 22,
     gap: 14,
+  },
+  empty: {
+    marginTop: 22,
+    backgroundColor: Palette.white,
+    borderRadius: 24,
+    padding: 20,
+    ...cardShadow,
+  },
+  emptyTitle: {
+    color: Palette.ink,
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  emptyBody: {
+    marginTop: 4,
+    color: Palette.muted,
+    fontSize: 14,
+    lineHeight: 20,
   },
   card: {
     backgroundColor: Palette.white,
@@ -118,12 +152,6 @@ const styles = StyleSheet.create({
     color: Palette.ink,
     fontSize: 18,
     fontWeight: 700,
-  },
-  detail: {
-    marginTop: 4,
-    color: Palette.muted,
-    fontSize: 14,
-    lineHeight: 20,
   },
   track: {
     marginTop: 16,

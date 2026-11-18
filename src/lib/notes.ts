@@ -23,6 +23,17 @@ export function saveTaskNote(task: Task) {
   return file.uri;
 }
 
+export function deleteTaskNote(id: string) {
+  if (Platform.OS === 'web') return;
+
+  try {
+    const file = new File(notesFolder(), `${id}.txt`);
+    if (file.exists) file.delete();
+  } catch {
+    // A missing note should not block opening the task list.
+  }
+}
+
 export function countSavedNotes() {
   if (Platform.OS === 'web') return null;
 

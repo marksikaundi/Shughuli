@@ -17,7 +17,6 @@ import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { toDateKey, useTasks, type Priority } from '@/data/tasks';
 
-const PROJECTS = ['Website Redesign', 'Mobile App', 'Brand System'];
 const PRIORITIES: { id: Priority; label: string }[] = [
   { id: 'low', label: 'Low' },
   { id: 'medium', label: 'Medium' },
@@ -28,12 +27,11 @@ export default function AddTaskScreen() {
   const insets = useSafeAreaInsets();
   const { addTask } = useTasks();
   const today = new Date();
-  const [title, setTitle] = useState('Finish landing page design');
-  const [description, setDescription] = useState('Design the new landing page for the product launch.');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('low');
-  const [project, setProject] = useState(PROJECTS[0]);
-  const [projectsOpen, setProjectsOpen] = useState(false);
-  const [tags, setTags] = useState(['Design', 'UI/UX', 'Work']);
+  const [project, setProject] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [addingTag, setAddingTag] = useState(false);
   const [tagDraft, setTagDraft] = useState('');
   const [error, setError] = useState('');
@@ -74,7 +72,7 @@ export default function AddTaskScreen() {
         date: toDateKey(today),
         start: '10:00',
         priority,
-        project,
+        project: project.trim(),
         tags,
       });
       leave();
@@ -173,26 +171,16 @@ export default function AddTaskScreen() {
           </Field>
 
           <Field label="Project">
-            <Pressable style={styles.input} onPress={() => setProjectsOpen((open) => !open)}>
+            <View style={styles.input}>
               <Icon name="folder" size={16} color={Palette.ink} />
-              <Text style={[styles.dueText, styles.projectText]}>{project}</Text>
-              <Icon name="chevronDown" size={18} color={Palette.muted} />
-            </Pressable>
-            {projectsOpen ? (
-              <View style={styles.menu}>
-                {PROJECTS.map((item) => (
-                  <Pressable
-                    key={item}
-                    onPress={() => {
-                      setProject(item);
-                      setProjectsOpen(false);
-                    }}
-                    style={styles.menuItem}>
-                    <Text style={[styles.menuText, item === project && styles.menuTextActive]}>{item}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            ) : null}
+              <TextInput
+                value={project}
+                onChangeText={setProject}
+                placeholder="Project name"
+                placeholderTextColor={Palette.faint}
+                style={styles.projectInput}
+              />
+            </View>
           </Field>
 
           <Field label="Tags">
@@ -310,9 +298,12 @@ const styles = StyleSheet.create({
     fontWeight: 600,
     flexShrink: 1,
   },
-  projectText: {
+  projectInput: {
     flex: 1,
+    color: Palette.ink,
     fontSize: 15,
+    fontWeight: 600,
+    paddingVertical: 0,
   },
   priorities: {
     flexDirection: 'row',
@@ -349,23 +340,6 @@ const styles = StyleSheet.create({
   },
   priorityHighText: {
     color: Palette.highText,
-  },
-  menu: {
-    backgroundColor: Palette.white,
-    borderRadius: 16,
-    overflow: 'hidden',
-    ...cardShadow,
-  },
-  menuItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  menuText: {
-    color: Palette.ink,
-    fontSize: 15,
-  },
-  menuTextActive: {
-    fontWeight: 700,
   },
   tags: {
     flexDirection: 'row',
