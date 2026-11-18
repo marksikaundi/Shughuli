@@ -8,6 +8,7 @@
     "scheme": "shughuli",
     "userInterfaceStyle": "automatic",
     "android": {
+      "package": "shughuli.com",
       "adaptiveIcon": {
         "backgroundColor": "#000000",
         "foregroundImage": "./assets/shughuli.png",
@@ -19,8 +20,7 @@
         "android.permission.WRITE_CALENDAR",
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
-      ],
-      "package": "shughuli.com"
+      ]
     },
     "web": {
       "output": "server",

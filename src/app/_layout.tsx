@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppLockShell } from '@/components/app-lock-shell';
+import { ForceUpdateGate } from '@/components/force-update-gate';
 import { Palette } from '@/constants/palette';
 import { syncAllTasks } from '@/lib/google-calendar';
 import { syncPlannedReminders } from '@/lib/planned-reminders';
@@ -32,40 +33,43 @@ export default function RootLayout() {
       });
   }, []);
 
-  if (!ready || !prefsReady) return null;
-
-  if (error) {
-    return (
-      <View style={styles.error}>
-        <Text style={styles.errorTitle}>Couldn’t open your tasks</Text>
-        <Text style={styles.errorBody}>{error}</Text>
-      </View>
-    );
-  }
-
   return (
-    <AppLockShell>
-      <StatusBar style="dark" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: reduceMotion ? 'none' : 'default',
-          contentStyle: { backgroundColor: '#FBF6F3' },
-        }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="add-task"
-          options={{
-            presentation: 'modal',
-            animation: reduceMotion ? 'none' : 'slide_from_bottom',
-          }}
-        />
-      </Stack>
-    </AppLockShell>
+    <View style={styles.root}>
+      {!ready || !prefsReady ? null : error ? (
+        <View style={styles.error}>
+          <Text style={styles.errorTitle}>Couldn’t open your tasks</Text>
+          <Text style={styles.errorBody}>{error}</Text>
+        </View>
+      ) : (
+        <AppLockShell>
+          <StatusBar style="dark" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: reduceMotion ? 'none' : 'default',
+              contentStyle: { backgroundColor: '#FBF6F3' },
+            }}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen
+              name="add-task"
+              options={{
+                presentation: 'modal',
+                animation: reduceMotion ? 'none' : 'slide_from_bottom',
+              }}
+            />
+          </Stack>
+        </AppLockShell>
+      )}
+      <ForceUpdateGate />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#FBF6F3',
+  },
   error: {
     flex: 1,
     backgroundColor: Palette.wash,
