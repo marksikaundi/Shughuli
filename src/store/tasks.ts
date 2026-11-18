@@ -35,6 +35,7 @@ type TaskState = {
   deleteTask: (id: string) => Promise<void>;
   clearTasks: () => Promise<void>;
   replaceTasks: (tasks: Task[]) => Promise<void>;
+  importTasks: (tasks: Task[]) => Promise<void>;
   syncReminders: () => Promise<void>;
 };
 
@@ -95,6 +96,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     }
     set({ tasks });
     await syncAllTasks(tasks).catch(() => undefined);
+  },
+  importTasks: async (incoming) => {
+    if (incoming.length === 0) return;
+    for (const task of incoming) await persistTask(task, 'insert', false);
+    set({ tasks: await readTasks() });
   },
   syncReminders: async () => {
     const db = await getDb();
@@ -159,7 +165,7 @@ async function rememberTask(task: Task) {
   await persistTask(task, 'insert');
 }
 
-async function persistTask(task: Task, mode: 'insert' | 'update') {
+async function persistTask(task: Task, mode: 'insert' | 'update', syncCalendar = true) {
   const db = await getDb();
   if (mode === 'update') {
     const existing = db.select().from(taskTable).where(eq(taskTable.id, task.id)).get();
@@ -177,7 +183,7 @@ async function persistTask(task: Task, mode: 'insert' | 'update') {
   } else {
     db.update(taskTable).set(values).where(eq(taskTable.id, task.id)).run();
   }
-  await syncTaskToCalendar(task).catch(() => undefined);
+  if (syncCalendar) await syncTaskToCalendar(task).catch(() => undefined);
 }
 
 async function wipeTasks() {

@@ -1,6 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/empty-state';
@@ -17,8 +18,9 @@ import {
   type Task,
   type TaskCategory,
 } from '@/data/tasks';
-import { connectGoogleCalendar, googleEventsOn, readCalendarLink, syncAllTasks, type GoogleScheduleItem } from '@/lib/google-calendar';
+import { connectGoogleCalendar, googleEventsOn, pullGoogleEvents, readCalendarLink, syncAllTasks, type GoogleScheduleItem } from '@/lib/google-calendar';
 import { usePreferencesStore } from '@/store/preferences';
+import { useTaskStore } from '@/store/tasks';
 
 type Filter = 'all' | TaskCategory;
 
@@ -94,7 +96,8 @@ export default function CalendarScreen() {
     setConnecting(true);
     try {
       const link = await connectGoogleCalendar();
-      await syncAllTasks(tasks);
+      await pullGoogleEvents((incoming) => useTaskStore.getState().importTasks(incoming));
+      await syncAllTasks(useTaskStore.getState().tasks);
       setGoogleAccount(link.account);
       setGoogleItems(await googleEventsOn(selected));
     } catch (error) {
@@ -130,7 +133,14 @@ export default function CalendarScreen() {
               accessibilityLabel="Add task"
               onPress={() => router.push('/add-task')}
             />
-            <IconButton icon="more" accessibilityLabel="More options" />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={googleAccount ? `Sync Google Calendar for ${googleAccount}` : 'Connect Google Calendar'}
+              disabled={connecting}
+              onPress={() => void connectCalendar()}
+              style={({ pressed }) => [styles.google, (pressed || connecting) && styles.googlePressed]}>
+              <GoogleMark />
+            </Pressable>
           </View>
           <View pointerEvents="none" style={styles.headerTitleWrap}>
             <Text style={styles.headerTitle}>{headerDate}</Text>
@@ -144,26 +154,6 @@ export default function CalendarScreen() {
             <Text style={styles.calendarPillText}>Calendar</Text>
           </View>
         </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={googleAccount ? `Google Calendar connected for ${googleAccount}` : 'Connect Google Calendar'}
-          onPress={() => void connectCalendar()}
-          style={({ pressed }) => [styles.connect, pressed && styles.connectPressed]}>
-          <View style={styles.connectIcon}>
-            <Icon name="calendar" size={18} color={Palette.ink} />
-          </View>
-          <View style={styles.connectCopy}>
-            <Text style={styles.connectTitle}>{googleAccount ? googleAccount : connecting ? 'Connecting…' : 'Connect Google Calendar'}</Text>
-            <Text style={styles.connectBody}>
-              {googleAccount
-                ? 'Scheduled tasks are on this Google Calendar.'
-                : Platform.OS === 'web'
-                  ? 'Connect from the phone. It uses the Google account signed in there.'
-                  : 'Uses the Google account already signed in on this phone.'}
-            </Text>
-          </View>
-        </Pressable>
 
         <View style={styles.week}>
           {week.map((date) => {
@@ -272,6 +262,29 @@ function GoogleCard({ item, last, timeFormat }: { item: GoogleScheduleItem; last
   );
 }
 
+function GoogleMark() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 48 48">
+      <Path
+        fill="#FFC107"
+        d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"
+      />
+      <Path
+        fill="#FF3D00"
+        d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"
+      />
+      <Path
+        fill="#4CAF50"
+        d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"
+      />
+      <Path
+        fill="#1976D2"
+        d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571.001-.001.002-.001.003-.002l6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"
+      />
+    </Svg>
+  );
+}
+
 function FilterPill({
   label,
   icon,
@@ -349,7 +362,23 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
+  },
+  google: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: Palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...cardShadow,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  googlePressed: {
+    opacity: 0.72,
   },
   headerTitleWrap: {
     ...StyleSheet.absoluteFill,
@@ -373,42 +402,6 @@ const styles = StyleSheet.create({
     lineHeight: 38,
     fontWeight: 700,
     letterSpacing: -0.8,
-  },
-  connect: {
-    marginTop: 18,
-    backgroundColor: Palette.white,
-    borderRadius: 24,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    ...cardShadow,
-  },
-  connectPressed: {
-    opacity: 0.86,
-  },
-  connectIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#F6F4F8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  connectCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  connectTitle: {
-    color: Palette.ink,
-    fontSize: 15,
-    fontWeight: 700,
-  },
-  connectBody: {
-    color: Palette.muted,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: 500,
   },
   calendarPill: {
     flexDirection: 'row',

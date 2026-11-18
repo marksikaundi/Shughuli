@@ -2,7 +2,7 @@ import * as Calendar from 'expo-calendar';
 import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
-import { taskMoment, type Task } from '@/data/model';
+import { taskMoment, toDateKey, type Task } from '@/data/model';
 
 const FILE_NAME = 'calendar.json';
 const CALENDAR_TITLE = 'Shughuli';
@@ -53,6 +53,37 @@ export async function connectGoogleCalendar() {
   current.account = account;
   await writeLinks(current);
   return current;
+}
+
+export async function pullGoogleEvents(save: (tasks: Task[]) => Promise<void>) {
+  const links = await readLinks();
+  if (!links || Platform.OS === 'web') return;
+  const permission = await Calendar.getCalendarPermissions();
+  if (!permission.granted) return;
+
+  const calendars = (await Calendar.getCalendars(Calendar.EntityTypes.EVENT)).filter(isGoogle);
+  if (calendars.length === 0) return;
+
+  const start = new Date();
+  start.setFullYear(start.getFullYear() - 1);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setFullYear(end.getFullYear() + 1);
+  end.setHours(23, 59, 59, 999);
+  const known = new Set(Object.values(links.events));
+  const events = await Calendar.listEvents(calendars, start, end);
+  const incoming: Task[] = [];
+
+  events.forEach((event, index) => {
+    if (!event.id || known.has(event.id)) return;
+    const task = eventToTask(event, incoming.length + index);
+    known.add(event.id);
+    links.events[task.id] = event.id;
+    incoming.push(task);
+  });
+
+  if (incoming.length > 0) await save(incoming);
+  await writeLinks(links);
 }
 
 export async function syncAllTasks(tasks: Task[]) {
@@ -201,6 +232,43 @@ function isGoogle(calendar: Calendar.ExpoCalendar) {
   const type = String(calendar.source?.type ?? '').toLowerCase();
   const account = `${calendar.source?.name ?? ''} ${calendar.ownerAccount ?? ''}`.toLowerCase();
   return type.includes('google') || account.includes('@gmail.') || account.includes('@googlemail.') || account.includes('@google.');
+}
+
+function eventToTask(event: Calendar.ExpoCalendarEvent, index: number): Task {
+  const start = asDate(event.startDate);
+  const end = asDate(event.endDate);
+  const sameDay = toDateKey(start) === toDateKey(end);
+  let startClock = clockFrom(start);
+  let endClock = sameDay ? clockFrom(end) : '23:59';
+  if (event.allDay || endClock <= startClock) {
+    startClock = '09:00';
+    endClock = '10:00';
+  }
+
+  return {
+    id: `task-g-${Date.now()}-${index}`,
+    title: event.title?.trim() || 'Untitled',
+    description: event.notes?.trim() || '',
+    date: toDateKey(start),
+    start: startClock,
+    end: endClock,
+    priority: 'medium',
+    status: 'todo',
+    category: 'personal',
+    project: '',
+    tags: [],
+    people: [],
+    extraPeople: 0,
+    scheduled: true,
+    starred: false,
+    kind: 'task',
+  };
+}
+
+function asDate(value: string | Date | undefined) {
+  if (value instanceof Date) return value;
+  const date = new Date(value ?? '');
+  return Number.isNaN(date.getTime()) ? new Date() : date;
 }
 
 function eventRange(task: Task) {
