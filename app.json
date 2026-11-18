@@ -19,7 +19,8 @@
         "android.permission.WRITE_CALENDAR",
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
-      ]
+      ],
+      "package": "shughuli.com"
     },
     "web": {
       "output": "server",
@@ -84,7 +85,7 @@
         }
       },
       "eas": {
-        "projectId": "db715dcb-4a61-4ed0-8dad-6e863f86f375"
+        "projectId": "f38ab26f-73c5-43c9-95c6-702550ef096b"
       }
     }
   }
