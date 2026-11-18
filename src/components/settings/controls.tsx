@@ -19,14 +19,14 @@ export function SettingsSection({
   footer,
   children,
 }: {
-  title: string;
+  title?: string;
   footer?: string;
   children: ReactNode;
 }) {
   const { colors, scale } = useSettingsTheme();
   return (
     <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: colors.muted, fontSize: 13 * scale }]}>{title}</Text>
+      {title ? <Text style={[styles.sectionTitle, { color: colors.muted, fontSize: 13 * scale }]}>{title}</Text> : null}
       <View style={[styles.card, { backgroundColor: colors.card }]}>{children}</View>
       {footer ? (
         <Text style={[styles.footer, { color: colors.muted, fontSize: 12 * scale, lineHeight: 18 * scale }]}>{footer}</Text>

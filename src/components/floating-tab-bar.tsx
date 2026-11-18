@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -13,6 +13,7 @@ const ICONS: Record<string, IconName> = {
 };
 
 export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
+  const pathname = usePathname();
   const midpoint = Math.ceil(state.routes.length / 2);
   const leading = state.routes.slice(0, midpoint);
   const trailing = state.routes.slice(midpoint);
@@ -49,9 +50,12 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
         target: route.key,
         canPreventDefault: true,
       });
-      if (!focused && !event.defaultPrevented) {
-        navigateToTab(route.key);
+      if (event.defaultPrevented) return;
+      if (focused) {
+        if (route.name === 'settings' && pathname !== '/settings') router.dismissTo('/settings');
+        return;
       }
+      navigateToTab(route.key);
     };
 
     return (
