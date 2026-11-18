@@ -28,7 +28,7 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
             accessibilityLabel="Add task"
             onPress={() => router.push('/add-task')}
             style={({ pressed }) => [styles.add, pressed && styles.pressed]}>
-            <Icon name="plus" size={26} color={Palette.ink} />
+            <Icon name="plus" size={26} color={Palette.white} />
           </Pressable>
           {trailing.map((route, index) => renderTab(route, index + leading.length))}
         </View>
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     marginTop: -26,
     marginHorizontal: 8,
     borderRadius: 29,
-    backgroundColor: Palette.lime,
+    backgroundColor: Palette.ink,
     borderWidth: 4,
     borderColor: Palette.white,
     alignItems: 'center',
