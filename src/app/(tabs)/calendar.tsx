@@ -18,7 +18,15 @@ import {
   type Task,
   type TaskCategory,
 } from '@/data/tasks';
-import { connectGoogleCalendar, googleEventsOn, pullGoogleEvents, readCalendarLink, syncAllTasks, type GoogleScheduleItem } from '@/lib/google-calendar';
+import {
+  calendarAccessGranted,
+  connectGoogleCalendar,
+  googleEventsOn,
+  pullGoogleEvents,
+  readCalendarLink,
+  syncAllTasks,
+  type GoogleScheduleItem,
+} from '@/lib/google-calendar';
 import { usePreferencesStore } from '@/store/preferences';
 import { useTaskStore } from '@/store/tasks';
 
@@ -93,9 +101,18 @@ export default function CalendarScreen() {
 
   async function connectCalendar() {
     if (connecting) return;
+    let granted = false;
+    try {
+      granted = await calendarAccessGranted();
+    } catch {
+      granted = false;
+    }
+    const consent = granted || (await confirmCalendarAccess());
+    if (!consent) return;
+
     setConnecting(true);
     try {
-      const link = await connectGoogleCalendar();
+      const link = await connectGoogleCalendar(true);
       await pullGoogleEvents((incoming) => useTaskStore.getState().importTasks(incoming));
       await syncAllTasks(useTaskStore.getState().tasks);
       setGoogleAccount(link.account);
@@ -229,6 +246,20 @@ export default function CalendarScreen() {
       </ScrollView>
     </Screen>
   );
+}
+
+function confirmCalendarAccess() {
+  return new Promise<boolean>((resolve) => {
+    Alert.alert(
+      'Google Calendar',
+      'Shughuli reads event titles, times, and notes from the Google calendars on this phone, from about a year ago through a year ahead, and can save them as tasks on this device. Scheduled tasks are written to a Shughuli calendar on that Google account. Google may sync those events with your Google account. Shughuli does not sell this information and does not upload it to its own server. The full policy is in Settings, under Privacy and security.',
+      [
+        { text: 'Not now', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Continue', onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) },
+    );
+  });
 }
 
 function GoogleCard({ item, last, timeFormat }: { item: GoogleScheduleItem; last: boolean; timeFormat: '12' | '24' }) {

@@ -129,12 +129,12 @@ const en = {
   feedback: 'Send feedback',
   feedbackPlaceholder: 'What should we know?',
   send: 'Send',
-  aboutBody: 'Shughuli is an offline place to plan the day, keep tasks, and leave the list on your device.',
+  aboutBody: 'Shughuli is a place to plan the day and keep tasks on your device. Google Calendar is optional, and only connects when you allow it.',
   aboutMeaning: 'The name is Kiswahili for activity — the things you mean to get done.',
   aboutDayTitle: 'The day',
   aboutDayBody: 'Home keeps today’s tasks, their priority, and a goal you set. The calendar follows the week the way you start it.',
   aboutDeviceTitle: 'On this phone',
-  aboutDeviceBody: 'Tasks, notes, and settings stay on the device. There is no account, and the list is not sent anywhere.',
+  aboutDeviceBody: 'Tasks, notes, and settings stay on the device. There is no Shughuli account. The list is sent only if you connect Google Calendar, and then only as events on that calendar.',
   aboutRemindersTitle: 'Reminders',
   aboutRemindersBody: 'Reminders are scheduled by the phone. You can silence them, or hide the task name so the alert stays generic.',
   aboutCopyTitle: 'Your copy',
@@ -167,11 +167,11 @@ const en = {
   photoFailed: 'Could not save that photo on this device.',
   licensesIntro: 'Shughuli is built with these open-source projects.',
   privacyBody:
-    'Shughuli keeps your tasks, notes, reminders, and settings on this device. There is no account, and the app does not send that data to a server.\n\nReminders are scheduled by the phone. When “Hide sensitive information” is on, reminder text stays generic.\n\nA backup or export leaves the device only when you share it. Copies you save in Files, Drive, or Mail stay there until you delete them.\n\nYour PIN is stored in the device keychain or keystore. Biometrics stay with the operating system. Shughuli never receives your fingerprint or face.\n\nDelete all app data removes the on-device database, notes, and settings. It does not delete copies you already exported.',
+    'Shughuli keeps your tasks, notes, reminders, profile photo, and settings on this device. There is no Shughuli account, and the app does not sell your information.\n\nReminders are scheduled by the phone. Shughuli asks for notification permission when a reminder needs it. When “Hide sensitive information” is on, reminder text stays generic.\n\nGoogle Calendar is optional. If you connect it, Shughuli reads event titles, times, and notes from the Google calendars on this phone, about a year before and after today, and can save those events as tasks on the device. Scheduled tasks are written to a Shughuli calendar on that Google account. Google may then sync those events with your Google account. Shughuli does not upload your lists to a server of its own. You can refuse calendar access, and you can turn it off later in the phone’s settings. Clearing personal data removes the on-device tasks and the events Shughuli created for them.\n\nA backup or export leaves the device only when you share it. A profile photo you choose stays in the app until you remove it. Copies you save in Files, Drive, or Mail stay there until you delete them.\n\nYour PIN is stored in the device keystore. Biometrics stay with the operating system. Shughuli never receives your fingerprint or face.\n\nDelete all app data removes the on-device database, notes, and settings. It does not delete copies you already exported, or events you created yourself in Google Calendar. Uninstalling the app removes its on-device data. Questions about this policy can be sent through the contact details on the Play Store listing.',
   termsBody:
-    'Shughuli is a personal planning tool. You decide what to record, and you are responsible for keeping a backup if the lists matter to you.\n\nThe app is provided as it is, for offline use on your device. Rate and feedback do not upload data to Shughuli. Feedback opens the share sheet so you can send a message with an app you already use.',
+    'Shughuli is a personal planning tool. You decide what to record, and you are responsible for keeping a backup if the lists matter to you.\n\nThe app is provided as it is. Lists stay on your device unless you connect Google Calendar or share a backup yourself. Rate and feedback do not upload data to Shughuli. Feedback opens the share sheet so you can send a message with an app you already use.',
   privacySwahili:
-    'Shughuli huhifadhi kazi, madokezo, vikumbusho, na mipangilio kwenye kifaa hiki. Hakuna akaunti, na programu haitumi data hiyo kwenye seva.',
+    'Shughuli huhifadhi data kwenye kifaa. Google Calendar ikiunganishwa, matukio yanaweza kusawazishwa na akaunti yako ya Google. Hakuna akaunti ya Shughuli, na taarifa haziuzwi.',
 };
 
 const sw: { [K in keyof typeof en]: string } = {
@@ -305,12 +305,12 @@ const sw: { [K in keyof typeof en]: string } = {
   feedback: 'Tuma maoni',
   feedbackPlaceholder: 'Tujulishe nini?',
   send: 'Tuma',
-  aboutBody: 'Shughuli ni mahali pa nje ya mtandao pa kupanga siku, kuweka kazi, na kuacha orodha kwenye kifaa chako.',
+  aboutBody: 'Shughuli ni mahali pa kupanga siku na kuweka kazi kwenye kifaa chako. Google Calendar si lazima, na huunganishwa tu ukiruhusu.',
   aboutMeaning: 'Jina ni la Kiswahili, na linamaanisha kazi au jambo unalokusudia kulifanya.',
   aboutDayTitle: 'Siku',
   aboutDayBody: 'Nyumbani huweka kazi za leo, kipaumbele, na lengo unaloweka. Kalenda inafuata wiki unavyoianza.',
   aboutDeviceTitle: 'Kwenye simu hii',
-  aboutDeviceBody: 'Kazi, madokezo, na mipangilio hubaki kwenye kifaa. Hakuna akaunti, na orodha haitumwi popote.',
+  aboutDeviceBody: 'Kazi, madokezo, na mipangilio hubaki kwenye kifaa. Hakuna akaunti ya Shughuli. Orodha hutumwa tu ukiunganisha Google Calendar, na wakati huo kama matukio kwenye kalenda hiyo.',
   aboutRemindersTitle: 'Vikumbusho',
   aboutRemindersBody: 'Vikumbusho hupangwa na simu. Unaweza kuvinyamazisha, au kuficha jina la kazi ili arifa ibaki ya jumla.',
   aboutCopyTitle: 'Nakala yako',
@@ -343,11 +343,11 @@ const sw: { [K in keyof typeof en]: string } = {
   photoFailed: 'Picha haikuweza kuhifadhiwa kwenye kifaa hiki.',
   licensesIntro: 'Shughuli imejengwa kwa miradi hii huria.',
   privacyBody:
-    'Shughuli huhifadhi kazi, madokezo, vikumbusho, na mipangilio kwenye kifaa hiki. Hakuna akaunti, na programu haitumi data hiyo kwenye seva.\n\nVikumbusho hupangwa na simu. “Ficha taarifa nyeti” ikiwa imewashwa, maandishi ya kikumbusho hubaki ya jumla.\n\nNakala au uhamishaji huondoka kwenye kifaa tu unaposhiriki. Nakala unazotunza kwenye Files, Drive, au Mail hubaki huko hadi uzifute.\n\nPIN yako huhifadhiwa kwenye keychain au keystore ya kifaa. Bayometriki hubaki kwenye mfumo wa simu. Shughuli haioni alama ya kidole wala uso wako.\n\nKufuta data yote huondoa hifadhidata, madokezo, na mipangilio ya kifaa. Haifuti nakala ulizoshahamisha.',
+    'Shughuli huhifadhi kazi, madokezo, vikumbusho, picha ya wasifu, na mipangilio kwenye kifaa hiki. Hakuna akaunti ya Shughuli, na programu haiuzi taarifa zako.\n\nVikumbusho hupangwa na simu. Shughuli huomba ruhusa ya arifa kikumbusho kinapohitajika. “Ficha taarifa nyeti” ikiwa imewashwa, maandishi ya kikumbusho hubaki ya jumla.\n\nGoogle Calendar si lazima. Ukiunganisha, Shughuli husoma majina, muda, na madokezo ya matukio kwenye kalenda za Google zilizo kwenye simu hii, takriban mwaka mmoja uliopita na mwaka mmoja ujao, na inaweza kuyahifadhi kama kazi kwenye kifaa. Kazi zilizopangwa huandikwa kwenye kalenda ya Shughuli ya akaunti hiyo ya Google. Google inaweza kusawazisha matukio hayo na akaunti yako ya Google. Shughuli haipeleki orodha kwenye seva yake. Unaweza kukataa ruhusa ya kalenda, na unaweza kuizima baadaye kwenye mipangilio ya simu. Kufuta data binafsi huondoa kazi za kifaa na matukio Shughuli iliyoyaunda.\n\nNakala au uhamishaji huondoka kwenye kifaa tu unaposhiriki. Picha ya wasifu unayochagua hubaki kwenye programu hadi uiondoe. Nakala unazotunza kwenye Files, Drive, au Mail hubaki huko hadi uzifute.\n\nPIN yako huhifadhiwa kwenye keystore ya kifaa. Bayometriki hubaki kwenye mfumo wa simu. Shughuli haioni alama ya kidole wala uso wako.\n\nKufuta data yote huondoa hifadhidata, madokezo, na mipangilio ya kifaa. Haifuti nakala ulizoshahamisha, wala matukio uliyoyaunda mwenyewe kwenye Google Calendar. Kuondoa programu hufuta data yake ya kifaa. Maswali kuhusu sera hii yanaweza kutumwa kupitia anwani iliyo kwenye ukurasa wa Play Store.',
   termsBody:
-    'Shughuli ni kifaa cha kupanga kibinafsi. Wewe unaamua cha kuandika, na unawajibika kutunza nakala ikiwa orodha ni muhimu.\n\nProgramu inatolewa kama ilivyo, kwa matumizi nje ya mtandao kwenye kifaa chako. Ukadiriaji na maoni havitumi data kwa Shughuli. Maoni hufungua karatasi ya kushiriki ili utume ujumbe kwa programu unayoitumia tayari.',
+    'Shughuli ni kifaa cha kupanga kibinafsi. Wewe unaamua cha kuandika, na unawajibika kutunza nakala ikiwa orodha ni muhimu.\n\nProgramu inatolewa kama ilivyo. Orodha hubaki kwenye kifaa chako isipokuwa ukiunganisha Google Calendar au ushiriki nakala mwenyewe. Ukadiriaji na maoni havitumi data kwa Shughuli. Maoni hufungua karatasi ya kushiriki ili utume ujumbe kwa programu unayoitumia tayari.',
   privacySwahili:
-    'Shughuli huhifadhi kazi, madokezo, vikumbusho, na mipangilio kwenye kifaa hiki. Hakuna akaunti, na programu haitumi data hiyo kwenye seva.',
+    'Shughuli huhifadhi data kwenye kifaa. Google Calendar ikiunganishwa, matukio yanaweza kusawazishwa na akaunti yako ya Google. Hakuna akaunti ya Shughuli, na taarifa haziuzwi.',
 };
 
 export type SettingsCopy = typeof en;

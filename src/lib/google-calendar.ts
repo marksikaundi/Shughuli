@@ -35,14 +35,26 @@ export function readCalendarLink() {
   return readLinks();
 }
 
-export async function connectGoogleCalendar() {
+export async function calendarAccessGranted() {
+  if (Platform.OS === 'web') return false;
+  const permission = await Calendar.getCalendarPermissionsAsync();
+  return permission.granted;
+}
+
+export async function connectGoogleCalendar(consent = false) {
   if (Platform.OS === 'web') {
     throw new Error('Google Calendar connects on the phone, using the Google account signed in there.');
   }
 
-  const permission = await Calendar.requestCalendarPermissionsAsync();
-  if (!permission.granted) {
-    throw new Error('Allow calendar access so Shughuli can add tasks to Google Calendar.');
+  const existing = await Calendar.getCalendarPermissionsAsync();
+  if (!existing.granted) {
+    if (!consent) {
+      throw new Error('Agree to calendar access before Shughuli can use Google Calendar.');
+    }
+    const permission = await Calendar.requestCalendarPermissionsAsync();
+    if (!permission.granted) {
+      throw new Error('Allow calendar access so Shughuli can read your schedule and add tasks to Google Calendar.');
+    }
   }
 
   const calendar = await ensureShughuliCalendar();

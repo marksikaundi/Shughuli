@@ -20,6 +20,10 @@
         "android.permission.WRITE_CALENDAR",
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
+      ],
+      "blockedPermissions": [
+        "com.google.android.gms.permission.AD_ID",
+        "android.permission.USE_EXACT_ALARM"
       ]
     },
     "web": {
@@ -58,7 +62,7 @@
       [
         "expo-calendar",
         {
-          "calendarPermission": "Shughuli puts your scheduled tasks on the Google Calendar signed in on this phone."
+          "calendarPermission": "Shughuli reads event titles, times, and notes on this phone to show your schedule, and writes scheduled tasks to the Google Calendar signed in on this phone."
         }
       ],
       "expo-sharing",

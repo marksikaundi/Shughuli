@@ -34,13 +34,10 @@ export async function prepareReminders() {
   if (Platform.OS === 'web') return false;
 
   try {
-    await configureReminderChannel();
     const current = await Notifications.getPermissionsAsync();
-    if (current.status === 'granted') return true;
-    const asked = await Notifications.requestPermissionsAsync({
-      ios: { allowAlert: true, allowBadge: false, allowSound: true },
-    });
-    return asked.status === 'granted';
+    if (current.status !== 'granted') return false;
+    await configureReminderChannel();
+    return true;
   } catch {
     return false;
   }
@@ -48,12 +45,23 @@ export async function prepareReminders() {
 
 export async function ensureReminderPermission() {
   if (Platform.OS === 'web') return false;
-  const current = await Notifications.getPermissionsAsync();
-  if (current.status === 'granted') {
+
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    const status =
+      current.status === 'granted'
+        ? current.status
+        : (
+            await Notifications.requestPermissionsAsync({
+              ios: { allowAlert: true, allowBadge: false, allowSound: true },
+            })
+          ).status;
+    if (status !== 'granted') return false;
     await configureReminderChannel();
     return true;
+  } catch {
+    return false;
   }
-  return prepareReminders();
 }
 
 export async function configureReminderChannel() {

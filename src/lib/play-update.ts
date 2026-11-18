@@ -52,13 +52,7 @@ export async function notifyPlayUpdate(storeVersion: string | null) {
 
   try {
     const current = await Notifications.getPermissionsAsync();
-    const status =
-      current.status === 'granted'
-        ? current.status
-        : current.status === 'denied'
-          ? current.status
-          : (await Notifications.requestPermissionsAsync()).status;
-    if (status !== 'granted') return;
+    if (current.status !== 'granted') return;
 
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
       name: 'App updates',
