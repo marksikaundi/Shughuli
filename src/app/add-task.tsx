@@ -16,7 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
-import { formatClock, toDateKey, useTasks, type Priority, type Task } from '@/data/tasks';
+import { formatClock, formatDate, toDateKey, useTasks, type Priority, type Task } from '@/data/tasks';
+import { usePreferencesStore } from '@/store/preferences';
 
 const PRIORITIES: { id: Priority; label: string }[] = [
   { id: 'low', label: 'Low' },
@@ -40,10 +41,15 @@ export default function AddTaskScreen() {
 function TaskForm({ task }: { task?: Task }) {
   const insets = useSafeAreaInsets();
   const { addTask, updateTask, deleteTask } = useTasks();
+  const defaultPriority = usePreferencesStore((state) => state.prefs.defaultPriority);
+  const planningStart = usePreferencesStore((state) => state.prefs.planningStart);
+  const duration = usePreferencesStore((state) => state.prefs.defaultDuration);
+  const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
+  const dateFormat = usePreferencesStore((state) => state.prefs.dateFormat);
   const editing = Boolean(task);
   const [title, setTitle] = useState(task?.title ?? '');
   const [description, setDescription] = useState(task?.description ?? '');
-  const [priority, setPriority] = useState<Priority>(task?.priority ?? 'low');
+  const [priority, setPriority] = useState<Priority>(task?.priority ?? defaultPriority);
   const [project, setProject] = useState(task?.project ?? '');
   const [tags, setTags] = useState<string[]>(task?.tags ?? []);
   const [addingTag, setAddingTag] = useState(false);
@@ -51,9 +57,9 @@ function TaskForm({ task }: { task?: Task }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const date = task?.date ?? toDateKey(new Date());
-  const start = task?.start ?? '10:00';
+  const start = task?.start ?? planningStart;
 
-  const dueLabel = dueDateLabel(date);
+  const dueLabel = dueDateLabel(date, dateFormat);
 
   function commitTag() {
     const next = tagDraft.trim();
@@ -182,7 +188,10 @@ function TaskForm({ task }: { task?: Task }) {
               </View>
               <View style={[styles.input, styles.timeField]}>
                 <Icon name="clock" size={16} color={Palette.ink} />
-                <Text style={styles.dueText}>{formatClock(start)}</Text>
+                <Text style={styles.dueText}>
+                  {formatClock(start, timeFormat)}
+                  {editing ? '' : ` · ${duration} min`}
+                </Text>
               </View>
             </View>
           </Field>
@@ -304,13 +313,9 @@ function MissingTask() {
   );
 }
 
-function dueDateLabel(value: string) {
+function dueDateLabel(value: string, dateFormat: 'dmy' | 'mdy' | 'ymd') {
   const [year, month, day] = value.split('-').map(Number);
-  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return formatDate(new Date(year, month - 1, day), dateFormat);
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {

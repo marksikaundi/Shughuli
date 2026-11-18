@@ -17,17 +17,20 @@ import {
   type Task,
   type TaskCategory,
 } from '@/data/tasks';
+import { usePreferencesStore } from '@/store/preferences';
 
 type Filter = 'all' | TaskCategory;
 
 export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
+  const weekStartsOn = usePreferencesStore((state) => state.prefs.weekStartsOn);
+  const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
   const [selected, setSelected] = useState(() => new Date());
   const [filter, setFilter] = useState<Filter>('all');
   const [starredOnly, setStarredOnly] = useState(false);
 
-  const weekStart = useMemo(() => startOfWeek(selected), [selected]);
+  const weekStart = useMemo(() => startOfWeek(selected, weekStartsOn), [selected, weekStartsOn]);
   const week = useMemo(
     () =>
       Array.from({ length: 7 }, (_, index) => {
@@ -157,7 +160,7 @@ export default function CalendarScreen() {
                 {groupIndex === 0 ? <Text style={styles.today}>{showingToday ? 'Today' : headerDate}</Text> : null}
               </View>
               {group.items.map((task, index) => (
-                <ScheduleCard key={task.id} task={task} last={index === group.items.length - 1} />
+                <ScheduleCard key={task.id} task={task} last={index === group.items.length - 1} timeFormat={timeFormat} />
               ))}
             </View>
           ))
@@ -186,14 +189,14 @@ function FilterPill({
   );
 }
 
-function ScheduleCard({ task, last }: { task: Task; last: boolean }) {
-  const clock = splitClock(task.start);
+function ScheduleCard({ task, last, timeFormat }: { task: Task; last: boolean; timeFormat: '12' | '24' }) {
+  const clock = splitClock(task.start, timeFormat);
 
   return (
     <View style={styles.event}>
       <View style={styles.timeCol}>
         <Text style={styles.timeHour}>{clock.time}</Text>
-        <Text style={styles.timeSuffix}>{clock.suffix}</Text>
+        {clock.suffix ? <Text style={styles.timeSuffix}>{clock.suffix}</Text> : null}
       </View>
       <View style={styles.rail}>
         <View style={styles.railDot} />
@@ -211,7 +214,7 @@ function ScheduleCard({ task, last }: { task: Task; last: boolean }) {
           <View style={styles.rangeRow}>
             <Icon name="clock" size={13} color={Palette.muted} />
             <Text style={styles.range}>
-              {formatClock(task.start)} - {formatClock(task.end)}
+              {formatClock(task.start, timeFormat)} - {formatClock(task.end, timeFormat)}
             </Text>
           </View>
         )}

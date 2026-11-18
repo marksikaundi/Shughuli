@@ -1,5 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, Vibration, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
@@ -12,6 +14,7 @@ import { Layout } from '@/constants/palette';
 import { useScreenStatusBar, useSettingsTheme } from '@/hooks/use-settings-theme';
 import { biometricKind, checkPin, hasPin, savePin } from '@/lib/app-lock';
 import {
+  ActionCancelled,
   chooseAvatar,
   clearCache,
   clearPersonalData,
@@ -240,7 +243,7 @@ function NotificationsSection() {
   }
 
   return (
-    <SettingsSection title={text.notifications} footer={text.reminderFoot}>
+    <SettingsSection title={text.notifications} footer={`${text.endOfDay}: ${formatClock('20:00')}. ${text.reminderFoot}`}>
       <ToggleRow icon="bell" label={text.taskReminders} value={prefs.taskReminders} onChange={(value) => void toggle('taskReminders', value)} />
       <ToggleRow icon="check" label={text.habitReminders} value={prefs.habitReminders} onChange={(value) => void toggle('habitReminders', value)} />
       <ToggleRow icon="sun" label={text.dailyPlanning} value={prefs.dailyPlanning} onChange={(value) => void toggle('dailyPlanning', value)} />
@@ -304,6 +307,7 @@ function DataSection() {
       setNotice(success);
       refresh();
     } catch (error) {
+      if (error instanceof ActionCancelled) return;
       Alert.alert(text.data, error instanceof Error ? error.message : text.backupFailed);
     } finally {
       setBusy(null);
@@ -386,14 +390,7 @@ function DataSection() {
               style={styles.backupRow}
               onPress={() => {
                 setRestoreOpen(false);
-                void run(
-                  'restore',
-                  async () => {
-                    const restored = await restorePickedFile();
-                    if (!restored) return;
-                  },
-                  text.restored,
-                );
+                void run('restore', () => restorePickedFile(), text.restored);
               }}>
               <Text style={{ color: theme.colors.ink, fontWeight: 700 }}>{text.chooseFile}</Text>
             </Pressable>

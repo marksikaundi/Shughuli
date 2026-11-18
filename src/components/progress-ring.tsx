@@ -7,10 +7,12 @@ export function ProgressRing({
   progress,
   size = 118,
   stroke = 12,
+  color = Palette.lime,
 }: {
   progress: number;
   size?: number;
   stroke?: number;
+  color?: string;
 }) {
   const clamped = Math.min(1, Math.max(0, progress));
   const radius = (size - stroke) / 2;
@@ -32,7 +34,7 @@ export function ProgressRing({
           cx={center}
           cy={center}
           r={radius}
-          stroke={Palette.lime}
+          stroke={color}
           strokeWidth={stroke}
           fill="none"
           strokeLinecap="round"

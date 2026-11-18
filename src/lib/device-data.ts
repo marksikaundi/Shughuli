@@ -22,6 +22,8 @@ import {
 import { usePreferencesStore } from '@/store/preferences';
 import { useTaskStore } from '@/store/tasks';
 
+const WEB_BACKUPS = 'shughuli.backups';
+
 export class ActionCancelled extends Error {}
 
 export type BackupRecord = {

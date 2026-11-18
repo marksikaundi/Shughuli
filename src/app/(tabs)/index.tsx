@@ -9,6 +9,8 @@ import { ProgressRing } from '@/components/progress-ring';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { formatClock, toDateKey, useTasks, type Task, type TaskStatus } from '@/data/tasks';
+import { accentById } from '@/data/preferences';
+import { usePreferencesStore } from '@/store/preferences';
 
 const FILTERS: { id: Exclude<TaskStatus, 'done'>; label: string }[] = [
   { id: 'todo', label: 'To Do' },
@@ -25,6 +27,9 @@ const PRIORITY_TONE = {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
+  const visibility = usePreferencesStore((state) => state.prefs.completedVisibility);
+  const dailyGoal = usePreferencesStore((state) => state.prefs.dailyGoal);
+  const accent = usePreferencesStore((state) => state.prefs.accent);
   const [filter, setFilter] = useState<TaskStatus | 'all'>('todo');
   const today = toDateKey(new Date());
 
@@ -37,17 +42,22 @@ export default function HomeScreen() {
     [todayTasks],
   );
   const completed = todayTasks.length - todaysTasks.length;
-  const progress = todayTasks.length === 0 ? 0 : completed / todayTasks.length;
+  const progress = dailyGoal <= 0 ? 0 : Math.min(1, completed / dailyGoal);
 
   const counts = useMemo(() => {
     return {
-      todo: todaysTasks.filter((task) => task.status === 'todo').length,
-      in_progress: todaysTasks.filter((task) => task.status === 'in_progress').length,
-      in_review: todaysTasks.filter((task) => task.status === 'in_review').length,
+      todo: todayTasks.filter((task) => task.status === 'todo').length,
+      in_progress: todayTasks.filter((task) => task.status === 'in_progress').length,
+      in_review: todayTasks.filter((task) => task.status === 'in_review').length,
+      done: todayTasks.filter((task) => task.status === 'done').length,
     };
-  }, [todaysTasks]);
+  }, [todayTasks]);
 
-  const visible = filter === 'all' ? todaysTasks : todaysTasks.filter((task) => task.status === filter);
+  const filters: { id: TaskStatus; label: string }[] =
+    visibility === 'hide' ? [...FILTERS] : [...FILTERS, { id: 'done', label: 'Done' }];
+  const source = visibility === 'hide' ? todaysTasks : todayTasks;
+  const activeFilter = visibility === 'hide' && filter === 'done' ? 'todo' : filter;
+  const visible = activeFilter === 'all' ? source : source.filter((task) => task.status === activeFilter);
 
   return (
     <Screen>
@@ -85,7 +95,7 @@ export default function HomeScreen() {
         ) : (
           <>
             <View style={styles.progressCard}>
-              <ProgressRing progress={progress} />
+              <ProgressRing progress={progress} color={accentById(accent).ring} />
               <View style={styles.stats}>
                 <Stat icon="grid" value={String(todayTasks.length)} label="Total Task" />
                 <Stat icon="done" value={String(completed)} label="Completed Task" />
@@ -105,8 +115,8 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.filters}
               style={styles.filterScroll}>
-              {FILTERS.map((item) => {
-                const selected = filter === item.id;
+              {filters.map((item) => {
+                const selected = activeFilter === item.id;
                 return (
                   <Pressable
                     key={item.id}
@@ -151,13 +161,16 @@ function Stat({ icon, value, label }: { icon: 'grid' | 'done' | 'pending'; value
 
 function TaskCard({ task }: { task: Task }) {
   const tone = PRIORITY_TONE[task.priority];
+  const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
+  const visibility = usePreferencesStore((state) => state.prefs.completedVisibility);
+  const dimmed = visibility === 'dim' && task.status === 'done';
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Edit ${task.title}`}
       onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
-      style={styles.card}>
+      style={[styles.card, dimmed && styles.dimmed]}>
       <View style={styles.cardTop}>
         <View style={[styles.priority, { backgroundColor: tone.bg }]}>
           <View style={[styles.priorityDot, { backgroundColor: tone.text }]} />
@@ -172,7 +185,7 @@ function TaskCard({ task }: { task: Task }) {
         <View style={styles.timeRow}>
           <Icon name="clock" size={14} color={Palette.muted} />
           <Text style={styles.time}>
-            {formatClock(task.start)} - {formatClock(task.end)}
+            {formatClock(task.start, timeFormat)} - {formatClock(task.end, timeFormat)}
           </Text>
         </View>
       </View>
@@ -310,6 +323,9 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     padding: 16,
     ...cardShadow,
+  },
+  dimmed: {
+    opacity: 0.45,
   },
   cardTop: {
     flexDirection: 'row',

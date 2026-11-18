@@ -4,25 +4,26 @@ import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { AppLockShell } from '@/components/app-lock-shell';
 import { Palette } from '@/constants/palette';
+import { usePreferencesStore } from '@/store/preferences';
 import { useTaskStore } from '@/store/tasks';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const ready = useTaskStore((state) => state.ready);
+  const prefsReady = usePreferencesStore((state) => state.ready);
   const error = useTaskStore((state) => state.error);
+  const reduceMotion = usePreferencesStore((state) => state.prefs.reduceMotion);
 
   useEffect(() => {
-    useTaskStore
-      .getState()
-      .hydrate()
-      .finally(() => {
-        SplashScreen.hideAsync();
-      });
+    Promise.all([useTaskStore.getState().hydrate(), usePreferencesStore.getState().hydrate()]).finally(() => {
+      SplashScreen.hideAsync();
+    });
   }, []);
 
-  if (!ready) return null;
+  if (!ready || !prefsReady) return null;
 
   if (error) {
     return (
@@ -34,11 +35,12 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <AppLockShell>
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerShown: false,
+          animation: reduceMotion ? 'none' : 'default',
           contentStyle: { backgroundColor: '#FBF6F3' },
         }}>
         <Stack.Screen name="(tabs)" />
@@ -46,11 +48,11 @@ export default function RootLayout() {
           name="add-task"
           options={{
             presentation: 'modal',
-            animation: 'slide_from_bottom',
+            animation: reduceMotion ? 'none' : 'slide_from_bottom',
           }}
         />
       </Stack>
-    </>
+    </AppLockShell>
   );
 }
 

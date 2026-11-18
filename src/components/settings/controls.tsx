@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   Modal,
   Pressable,
@@ -187,7 +187,7 @@ export function ChoiceChips<T extends string>({
   value: T;
   onChange: (value: T) => void;
 }) {
-  const { colors, scale, accent, reduceMotion } = useSettingsTheme();
+  const { colors, scale, reduceMotion } = useSettingsTheme();
   return (
     <View style={styles.chips}>
       {options.map((option) => {
@@ -203,7 +203,7 @@ export function ChoiceChips<T extends string>({
               { backgroundColor: selected ? colors.ink : colors.icon },
               pressed && !reduceMotion && styles.pressedScale,
             ]}>
-            <Text style={{ color: selected ? accent.color : colors.ink, fontSize: 13 * scale, fontWeight: 700 }}>
+            <Text style={{ color: selected ? colors.inverse : colors.ink, fontSize: 13 * scale, fontWeight: 700 }}>
               {option.label}
             </Text>
           </Pressable>
@@ -272,39 +272,72 @@ export function TextPrompt({
   onClose: () => void;
   onSave: (value: string) => void;
 }) {
-  const { colors, scale } = useSettingsTheme();
+  const { colors } = useSettingsTheme();
   const text = useCopy();
-  const [value, setValue] = useState(initial);
-
-  useEffect(() => {
-    if (visible) setValue(initial);
-  }, [visible, initial]);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={[styles.overlay, { backgroundColor: colors.overlay }]} onPress={onClose}>
         <Pressable style={[styles.sheet, { backgroundColor: colors.card }]} onPress={() => undefined}>
-          <Text style={[styles.sheetTitle, { color: colors.ink, fontSize: 18 * scale }]}>{title}</Text>
-          <TextInput
-            value={value}
-            onChangeText={setValue}
-            placeholder={placeholder}
-            placeholderTextColor={colors.faint}
-            autoFocus
-            maxLength={40}
-            style={[styles.input, { color: colors.ink, backgroundColor: colors.field, borderColor: colors.line, fontSize: 16 * scale }]}
-          />
-          <View style={styles.promptActions}>
-            <Pressable onPress={onClose} style={styles.promptButton}>
-              <Text style={{ color: colors.muted, fontWeight: 700, fontSize: 15 * scale }}>{text.cancel}</Text>
-            </Pressable>
-            <Pressable onPress={() => onSave(value.trim())} style={styles.promptButton}>
-              <Text style={{ color: colors.ink, fontWeight: 700, fontSize: 15 * scale }}>{text.save}</Text>
-            </Pressable>
-          </View>
+          {visible ? (
+            <PromptFields
+              key={initial}
+              title={title}
+              initial={initial}
+              placeholder={placeholder}
+              cancelLabel={text.cancel}
+              saveLabel={text.save}
+              onClose={onClose}
+              onSave={onSave}
+            />
+          ) : null}
         </Pressable>
       </Pressable>
     </Modal>
+  );
+}
+
+function PromptFields({
+  title,
+  initial,
+  placeholder,
+  cancelLabel,
+  saveLabel,
+  onClose,
+  onSave,
+}: {
+  title: string;
+  initial: string;
+  placeholder: string;
+  cancelLabel: string;
+  saveLabel: string;
+  onClose: () => void;
+  onSave: (value: string) => void;
+}) {
+  const { colors, scale } = useSettingsTheme();
+  const [value, setValue] = useState(initial);
+
+  return (
+    <>
+      <Text style={[styles.sheetTitle, { color: colors.ink, fontSize: 18 * scale }]}>{title}</Text>
+      <TextInput
+        value={value}
+        onChangeText={setValue}
+        placeholder={placeholder}
+        placeholderTextColor={colors.faint}
+        autoFocus
+        maxLength={40}
+        style={[styles.input, { color: colors.ink, backgroundColor: colors.field, borderColor: colors.line, fontSize: 16 * scale }]}
+      />
+      <View style={styles.promptActions}>
+        <Pressable onPress={onClose} style={styles.promptButton}>
+          <Text style={{ color: colors.muted, fontWeight: 700, fontSize: 15 * scale }}>{cancelLabel}</Text>
+        </Pressable>
+        <Pressable onPress={() => onSave(value.trim())} style={styles.promptButton}>
+          <Text style={{ color: colors.ink, fontWeight: 700, fontSize: 15 * scale }}>{saveLabel}</Text>
+        </Pressable>
+      </View>
+    </>
   );
 }
 

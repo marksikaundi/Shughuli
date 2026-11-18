@@ -46,7 +46,7 @@ const ICONS = {
   storage: { ios: 'internaldrive', android: 'storage', web: 'storage' },
   restore: { ios: 'arrow.counterclockwise', android: 'settings_backup_restore', web: 'settings_backup_restore' },
   personCircle: { ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' },
-  type: { ios: 'textformat.size', android: 'format_size', web: 'format_size' },
+  type: { ios: 'textformat.size', android: 'text_fields', web: 'text_fields' },
 } as const;
 
 export type IconName = keyof typeof ICONS;
