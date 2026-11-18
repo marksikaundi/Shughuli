@@ -54,8 +54,8 @@
         {
           "enableRemoteNotifications": false,
           "sounds": [
-            "./assets/sounds/shughuli-chime.wav",
-            "./assets/sounds/shughuli-bell.wav"
+            "./assets/sounds/shughuli_chime.wav",
+            "./assets/sounds/shughuli_bell.wav"
           ]
         }
       ],

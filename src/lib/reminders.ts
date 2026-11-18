@@ -21,8 +21,8 @@ if (Platform.OS !== 'web') {
 
 export function notificationSoundName(sound: ReminderSound): string | false {
   if (sound === 'none') return false;
-  if (sound === 'chime') return 'shughuli-chime.wav';
-  if (sound === 'bell') return 'shughuli-bell.wav';
+  if (sound === 'chime') return 'shughuli_chime.wav';
+  if (sound === 'bell') return 'shughuli_bell.wav';
   return 'default';
 }
 
