@@ -33,18 +33,18 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
           };
 
           return (
-            <Pressable
-              key={route.key}
-              accessibilityRole="tab"
-              accessibilityLabel={typeof label === 'string' ? label : route.name}
-              accessibilityState={{ selected: focused }}
-              onPress={onPress}
-              style={styles.slot}>
-              <View style={[styles.item, focused && styles.itemActive]}>
+            <View key={route.key} style={styles.slot}>
+              <Pressable
+                accessibilityRole="tab"
+                accessibilityLabel={typeof label === 'string' ? label : route.name}
+                accessibilityState={{ selected: focused }}
+                android_ripple={{ color: focused ? 'rgba(255,255,255,0.18)' : 'transparent' }}
+                onPress={onPress}
+                style={[styles.item, focused ? styles.itemActive : styles.itemIdle]}>
                 <Icon name={ICONS[route.name] ?? 'home'} size={20} color={color} />
                 <Text style={[styles.label, { color }]}>{label}</Text>
-              </View>
-            </Pressable>
+              </Pressable>
+            </View>
           );
         })}
       </View>
@@ -78,13 +78,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   item: {
-    minWidth: 68,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
     paddingVertical: 7,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     borderRadius: 24,
+  },
+  itemIdle: {
+    backgroundColor: 'transparent',
   },
   itemActive: {
     backgroundColor: Palette.ink,
