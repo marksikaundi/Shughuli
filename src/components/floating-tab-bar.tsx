@@ -60,9 +60,9 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
         accessibilityRole="tab"
         accessibilityLabel={name}
         accessibilityState={{ selected: focused }}
-        android_ripple={{ color: 'rgba(22,22,22,0.06)' }}
+        android_ripple={{ color: Palette.white }}
         onPress={onPress}
-        style={({ pressed }) => [styles.item, pressed && styles.pressed]}>
+        style={styles.item}>
         <Icon name={ICONS[route.name] ?? 'home'} size={22} color={color} />
         <Text style={[styles.label, { color }, focused && styles.labelActive]} numberOfLines={1}>
           {name}
@@ -108,6 +108,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
+    backgroundColor: 'transparent',
   },
   label: {
     fontSize: 11,
