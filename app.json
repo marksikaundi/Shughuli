@@ -13,7 +13,13 @@
         "foregroundImage": "./assets/shughuli.png",
         "monochromeImage": "./assets/shughuli.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "output": "server",
@@ -42,7 +48,10 @@
         "expo-notifications",
         {
           "enableRemoteNotifications": false,
-          "sounds": ["./assets/sounds/shughuli-chime.wav", "./assets/sounds/shughuli-bell.wav"]
+          "sounds": [
+            "./assets/sounds/shughuli-chime.wav",
+            "./assets/sounds/shughuli-bell.wav"
+          ]
         }
       ],
       [
@@ -52,17 +61,31 @@
         }
       ],
       "expo-sharing",
-        "expo-secure-store",
-        [
-          "expo-local-authentication",
-          {
-            "faceIDPermission": "Shughuli uses Face ID to unlock your tasks on this device."
-          }
-        ]
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Shughuli uses Face ID to unlock your tasks on this device."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "headers": {
+          "Cross-Origin-Embedder-Policy": "credentialless",
+          "Cross-Origin-Opener-Policy": "same-origin"
+        },
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "db715dcb-4a61-4ed0-8dad-6e863f86f375"
+      }
     }
   }
 }
