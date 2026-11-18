@@ -7,7 +7,7 @@ const ICONS = {
   home: { ios: 'house.fill', android: 'home', web: 'home' },
   projects: { ios: 'square.grid.2x2.fill', android: 'grid_view', web: 'grid_view' },
   calendar: { ios: 'calendar', android: 'calendar_month', web: 'calendar_month' },
-  profile: { ios: 'person.fill', android: 'person', web: 'person' },
+  settings: { ios: 'gearshape.fill', android: 'settings', web: 'settings' },
   plus: { ios: 'plus', android: 'add', web: 'add' },
   bell: { ios: 'bell', android: 'notifications', web: 'notifications' },
   back: { ios: 'chevron.left', android: 'chevron_left', web: 'chevron_left' },

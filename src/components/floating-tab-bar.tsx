@@ -8,7 +8,7 @@ const ICONS: Record<string, IconName> = {
   index: 'home',
   projects: 'projects',
   calendar: 'calendar',
-  profile: 'profile',
+  settings: 'settings',
 };
 
 export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {

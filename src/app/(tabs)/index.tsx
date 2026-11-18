@@ -3,12 +3,10 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar, AvatarStack } from '@/components/avatar-stack';
 import { Icon, IconButton } from '@/components/icon';
 import { ProgressRing } from '@/components/progress-ring';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
-import { PEOPLE } from '@/data/people';
 import { formatClock, toDateKey, useTasks, type Task, type TaskStatus } from '@/data/tasks';
 
 const FILTERS: { id: Exclude<TaskStatus, 'done'>; label: string }[] = [
@@ -55,13 +53,7 @@ export default function HomeScreen() {
           paddingHorizontal: Layout.padding,
         }}>
         <View style={styles.topRow}>
-          <View style={styles.identity}>
-            <Avatar person={PEOPLE.olivia} size={46} />
-            <View>
-              <Text style={styles.hello}>{greeting()}</Text>
-              <Text style={styles.name}>Olivia Reed</Text>
-            </View>
-          </View>
+          <Text style={styles.logo}>Shughuli</Text>
           <View style={styles.actions}>
             <IconButton
               icon="plus"
@@ -69,7 +61,7 @@ export default function HomeScreen() {
               accessibilityLabel="Add task"
               onPress={() => router.push('/add-task')}
             />
-            <IconButton icon="bell" accessibilityLabel="Notifications" onPress={() => router.push('/profile')} />
+            <IconButton icon="bell" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
           </View>
         </View>
 
@@ -125,13 +117,6 @@ export default function HomeScreen() {
   );
 }
 
-function greeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning';
-  if (hour < 17) return 'Good Afternoon';
-  return 'Good Evening';
-}
-
 function Stat({ icon, value, label }: { icon: 'grid' | 'done' | 'pending'; value: string; label: string }) {
   return (
     <View style={styles.stat}>
@@ -166,7 +151,6 @@ function TaskCard({ task }: { task: Task }) {
             {formatClock(task.start)} - {formatClock(task.end)}
           </Text>
         </View>
-        <AvatarStack ids={task.people} extra={task.extraPeople} />
       </View>
     </View>
   );
@@ -181,20 +165,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  identity: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  hello: {
+  logo: {
     color: Palette.ink,
-    fontSize: 16,
+    fontSize: 28,
     fontWeight: 700,
-  },
-  name: {
-    color: Palette.muted,
-    fontSize: 13,
-    marginTop: 1,
+    letterSpacing: -0.7,
   },
   actions: {
     flexDirection: 'row',

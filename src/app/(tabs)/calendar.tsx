@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AvatarStack } from '@/components/avatar-stack';
 import { Icon, IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
@@ -208,7 +207,6 @@ function ScheduleCard({ task, last }: { task: Task; last: boolean }) {
           </View>
         )}
         <View style={styles.eventFooter}>
-          <AvatarStack ids={task.people} extra={task.extraPeople} size={26} />
           {task.kind === 'meeting' ? (
             <View style={styles.meet}>
               <Icon name="video" size={13} color={Palette.white} />
@@ -453,7 +451,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
   },
   meet: {
     flexDirection: 'row',

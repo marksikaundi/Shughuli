@@ -1,15 +1,13 @@
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar } from '@/components/avatar-stack';
 import { Icon, type IconName } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
-import { PEOPLE } from '@/data/people';
 import { useTasks } from '@/data/tasks';
 import { countSavedNotes } from '@/lib/notes';
 
-export default function ProfileScreen() {
+export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
   const open = tasks.filter((task) => task.status !== 'done' && task.kind === 'task').length;
@@ -26,15 +24,12 @@ export default function ProfileScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: insets.top + 28,
+          paddingTop: insets.top + 8,
           paddingBottom: insets.bottom + Layout.tabClearance,
           paddingHorizontal: Layout.padding,
         }}>
-        <View style={styles.hero}>
-          <Avatar person={PEOPLE.olivia} size={84} />
-          <Text style={styles.name}>Olivia Reed</Text>
-          <Text style={styles.role}>Product designer</Text>
-        </View>
+        <Text style={styles.kicker}>On this device</Text>
+        <Text style={styles.title}>Settings</Text>
 
         <View style={styles.stats}>
           <Stat value={String(open)} label="Open tasks" />
@@ -68,20 +63,17 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 const styles = StyleSheet.create({
-  hero: {
-    alignItems: 'center',
-  },
-  name: {
-    marginTop: 14,
-    color: Palette.ink,
-    fontSize: 28,
-    fontWeight: 700,
-    letterSpacing: -0.6,
-  },
-  role: {
-    marginTop: 4,
+  kicker: {
     color: Palette.muted,
-    fontSize: 15,
+    fontSize: 13,
+    fontWeight: 600,
+  },
+  title: {
+    marginTop: 4,
+    color: Palette.ink,
+    fontSize: 34,
+    fontWeight: 700,
+    letterSpacing: -0.8,
   },
   stats: {
     marginTop: 22,
