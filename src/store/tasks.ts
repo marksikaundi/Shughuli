@@ -8,6 +8,7 @@ import { taskTable } from '@/db/schema';
 import { addMinutes, type Priority, type Task, type TaskCategory, type TaskDraft, type TaskKind, type TaskStatus } from '@/data/model';
 import type { PersonId } from '@/data/people';
 import { deleteAllNotes, deleteTaskNote, saveTaskNote } from '@/lib/notes';
+import { clearSyncedEvents, removeTaskFromCalendar, syncAllTasks, syncTaskToCalendar } from '@/lib/google-calendar';
 import { prepareReminders, scheduleTaskReminder } from '@/lib/reminders';
 import { getRuntimePrefs } from '@/lib/runtime-prefs';
 
@@ -93,6 +94,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         .run();
     }
     set({ tasks });
+    await syncAllTasks(tasks).catch(() => undefined);
   },
   syncReminders: async () => {
     const db = await getDb();
@@ -172,10 +174,10 @@ async function persistTask(task: Task, mode: 'insert' | 'update') {
 
   if (mode === 'insert') {
     db.insert(taskTable).values(values).run();
-    return;
+  } else {
+    db.update(taskTable).set(values).where(eq(taskTable.id, task.id)).run();
   }
-
-  db.update(taskTable).set(values).where(eq(taskTable.id, task.id)).run();
+  await syncTaskToCalendar(task).catch(() => undefined);
 }
 
 async function wipeTasks() {
@@ -184,6 +186,7 @@ async function wipeTasks() {
   for (const row of rows) await cancelReminder(row.notificationId);
   db.delete(taskTable).run();
   deleteAllNotes();
+  await clearSyncedEvents().catch(() => undefined);
 }
 
 async function forgetTask(id: string) {
@@ -192,6 +195,7 @@ async function forgetTask(id: string) {
   await cancelReminder(existing?.notificationId ?? null);
   deleteTaskNote(id);
   db.delete(taskTable).where(eq(taskTable.id, id)).run();
+  await removeTaskFromCalendar(id).catch(() => undefined);
 }
 
 async function cancelReminder(notificationId: string | null) {

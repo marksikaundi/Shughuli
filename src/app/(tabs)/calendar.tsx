@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/empty-state';
@@ -17,6 +17,7 @@ import {
   type Task,
   type TaskCategory,
 } from '@/data/tasks';
+import { connectGoogleCalendar, googleEventsOn, readCalendarLink, syncAllTasks, type GoogleScheduleItem } from '@/lib/google-calendar';
 import { usePreferencesStore } from '@/store/preferences';
 
 type Filter = 'all' | TaskCategory;
@@ -29,6 +30,9 @@ export default function CalendarScreen() {
   const [selected, setSelected] = useState(() => new Date());
   const [filter, setFilter] = useState<Filter>('all');
   const [starredOnly, setStarredOnly] = useState(false);
+  const [googleAccount, setGoogleAccount] = useState<string | null>(null);
+  const [googleItems, setGoogleItems] = useState<GoogleScheduleItem[]>([]);
+  const [connecting, setConnecting] = useState(false);
 
   const weekStart = useMemo(() => startOfWeek(selected, weekStartsOn), [selected, weekStartsOn]);
   const week = useMemo(
@@ -41,6 +45,25 @@ export default function CalendarScreen() {
     [weekStart],
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      readCalendarLink().then((link) => {
+        if (active) setGoogleAccount(link?.account ?? null);
+      });
+      googleEventsOn(selected)
+        .then((items) => {
+          if (active) setGoogleItems(items);
+        })
+        .catch(() => {
+          if (active) setGoogleItems([]);
+        });
+      return () => {
+        active = false;
+      };
+    }, [selected]),
+  );
+
   const selectedKey = toDateKey(selected);
   const events = useMemo(() => {
     return tasks
@@ -50,12 +73,36 @@ export default function CalendarScreen() {
       .sort((a, b) => a.start.localeCompare(b.start));
   }, [filter, selectedKey, starredOnly, tasks]);
 
+  const rows = useMemo(() => {
+    const local = events.map((task) => ({ kind: 'task' as const, id: task.id, start: task.start, task }));
+    const remote =
+      filter === 'all' && !starredOnly
+        ? googleItems.map((item) => ({ kind: 'google' as const, id: item.id, start: item.start, item }))
+        : [];
+    return [...local, ...remote].sort((a, b) => a.start.localeCompare(b.start) || a.id.localeCompare(b.id));
+  }, [events, filter, googleItems, starredOnly]);
+
   const groups = ['Morning', 'Afternoon', 'Evening']
     .map((label) => ({
       label,
-      items: events.filter((task) => periodOf(task.start) === label),
+      items: rows.filter((row) => periodOf(row.start) === label),
     }))
     .filter((group) => group.items.length > 0);
+
+  async function connectCalendar() {
+    if (connecting) return;
+    setConnecting(true);
+    try {
+      const link = await connectGoogleCalendar();
+      await syncAllTasks(tasks);
+      setGoogleAccount(link.account);
+      setGoogleItems(await googleEventsOn(selected));
+    } catch (error) {
+      Alert.alert('Google Calendar', error instanceof Error ? error.message : 'Could not connect Google Calendar on this phone.');
+    } finally {
+      setConnecting(false);
+    }
+  }
 
   const headerDate = selected.toLocaleDateString('en-US', {
     weekday: 'short',
@@ -97,6 +144,26 @@ export default function CalendarScreen() {
             <Text style={styles.calendarPillText}>Calendar</Text>
           </View>
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={googleAccount ? `Google Calendar connected for ${googleAccount}` : 'Connect Google Calendar'}
+          onPress={() => void connectCalendar()}
+          style={({ pressed }) => [styles.connect, pressed && styles.connectPressed]}>
+          <View style={styles.connectIcon}>
+            <Icon name="calendar" size={18} color={Palette.ink} />
+          </View>
+          <View style={styles.connectCopy}>
+            <Text style={styles.connectTitle}>{googleAccount ? googleAccount : connecting ? 'Connecting…' : 'Connect Google Calendar'}</Text>
+            <Text style={styles.connectBody}>
+              {googleAccount
+                ? 'Scheduled tasks are on this Google Calendar.'
+                : Platform.OS === 'web'
+                  ? 'Connect from the phone. It uses the Google account signed in there.'
+                  : 'Uses the Google account already signed in on this phone.'}
+            </Text>
+          </View>
+        </Pressable>
 
         <View style={styles.week}>
           {week.map((date) => {
@@ -159,14 +226,49 @@ export default function CalendarScreen() {
                 </View>
                 {groupIndex === 0 ? <Text style={styles.today}>{showingToday ? 'Today' : headerDate}</Text> : null}
               </View>
-              {group.items.map((task, index) => (
-                <ScheduleCard key={task.id} task={task} last={index === group.items.length - 1} timeFormat={timeFormat} />
-              ))}
+              {group.items.map((row, index) =>
+                row.kind === 'task' ? (
+                  <ScheduleCard key={row.id} task={row.task} last={index === group.items.length - 1} timeFormat={timeFormat} />
+                ) : (
+                  <GoogleCard key={row.id} item={row.item} last={index === group.items.length - 1} timeFormat={timeFormat} />
+                ),
+              )}
             </View>
           ))
         )}
       </ScrollView>
     </Screen>
+  );
+}
+
+function GoogleCard({ item, last, timeFormat }: { item: GoogleScheduleItem; last: boolean; timeFormat: '12' | '24' }) {
+  const clock = splitClock(item.start, timeFormat);
+
+  return (
+    <View style={styles.event}>
+      <View style={styles.timeCol}>
+        <Text style={styles.timeHour}>{clock.time}</Text>
+        {clock.suffix ? <Text style={styles.timeSuffix}>{clock.suffix}</Text> : null}
+      </View>
+      <View style={styles.rail}>
+        <View style={styles.railDot} />
+        {last ? null : <View style={styles.railLine} />}
+      </View>
+      <View style={styles.eventCard}>
+        <Text style={styles.eventTitle}>{item.title}</Text>
+        <View style={styles.rangeRow}>
+          <Icon name="clock" size={13} color={Palette.muted} />
+          <Text style={styles.range}>
+            {formatClock(item.start, timeFormat)} - {formatClock(item.end, timeFormat)}
+          </Text>
+        </View>
+        <View style={styles.eventFooter}>
+          <View style={styles.statusPill}>
+            <Text style={styles.statusText}>Google</Text>
+          </View>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -271,6 +373,42 @@ const styles = StyleSheet.create({
     lineHeight: 38,
     fontWeight: 700,
     letterSpacing: -0.8,
+  },
+  connect: {
+    marginTop: 18,
+    backgroundColor: Palette.white,
+    borderRadius: 24,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    ...cardShadow,
+  },
+  connectPressed: {
+    opacity: 0.86,
+  },
+  connectIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: '#F6F4F8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connectCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  connectTitle: {
+    color: Palette.ink,
+    fontSize: 15,
+    fontWeight: 700,
+  },
+  connectBody: {
+    color: Palette.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: 500,
   },
   calendarPill: {
     flexDirection: 'row',

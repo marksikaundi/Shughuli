@@ -49,6 +49,12 @@
           "sounds": ["./assets/sounds/shughuli-chime.wav", "./assets/sounds/shughuli-bell.wav"]
         }
       ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Shughuli puts your scheduled tasks on the Google Calendar signed in on this phone."
+        }
+      ],
       "expo-sharing",
         "expo-secure-store",
         [

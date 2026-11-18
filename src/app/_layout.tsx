@@ -6,6 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AppLockShell } from '@/components/app-lock-shell';
 import { Palette } from '@/constants/palette';
+import { syncAllTasks } from '@/lib/google-calendar';
 import { syncPlannedReminders } from '@/lib/planned-reminders';
 import { usePreferencesStore } from '@/store/preferences';
 import { useTaskStore } from '@/store/tasks';
@@ -24,6 +25,7 @@ export default function RootLayout() {
         if (useTaskStore.getState().error) return;
         await useTaskStore.getState().syncReminders();
         await syncPlannedReminders(usePreferencesStore.getState().prefs);
+        await syncAllTasks(useTaskStore.getState().tasks);
       })
       .finally(() => {
         SplashScreen.hideAsync();
