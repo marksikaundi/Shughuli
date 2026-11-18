@@ -53,6 +53,14 @@ export default function AddTaskScreen() {
     setAddingTag(false);
   }
 
+  function leave() {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  }
+
   function save() {
     const nextTitle = title.trim();
     if (!nextTitle) {
@@ -68,7 +76,7 @@ export default function AddTaskScreen() {
       project,
       tags,
     });
-    router.back();
+    leave();
   }
 
   return (
@@ -84,7 +92,7 @@ export default function AddTaskScreen() {
             paddingHorizontal: Layout.padding,
           }}>
           <View style={styles.header}>
-            <IconButton icon="close" accessibilityLabel="Close" onPress={() => router.back()} />
+            <IconButton icon="close" accessibilityLabel="Close" onPress={leave} />
             <Text style={styles.headerTitle}>Add New Task</Text>
             <IconButton icon="check" accessibilityLabel="Save task" onPress={save} />
           </View>
