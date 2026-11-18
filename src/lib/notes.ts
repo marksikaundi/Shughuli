@@ -39,5 +39,44 @@ export function countSavedNotes() {
 
   const folder = notesFolder();
   if (!folder.exists) return 0;
-  return folder.list().length;
+  return folder.list().filter((item) => item instanceof File).length;
+}
+
+export function readAllNotes() {
+  if (Platform.OS === 'web') return [];
+
+  const folder = notesFolder();
+  if (!folder.exists) return [];
+  return folder.list().flatMap((item) => {
+    if (!(item instanceof File) || !item.name.endsWith('.txt')) return [];
+    try {
+      return [{ id: item.name.replace(/\.txt$/, ''), text: item.textSync() }];
+    } catch {
+      return [];
+    }
+  });
+}
+
+export function writeNoteContents(id: string, text: string) {
+  if (Platform.OS === 'web') return;
+
+  const folder = notesFolder();
+  if (!folder.exists) folder.create({ intermediates: true, idempotent: true });
+  const file = new File(folder, `${id}.txt`);
+  if (!file.exists) file.create();
+  file.writeSync(text);
+}
+
+export function deleteAllNotes() {
+  if (Platform.OS === 'web') return;
+
+  const folder = notesFolder();
+  if (!folder.exists) return;
+  for (const item of folder.list()) {
+    try {
+      item.delete();
+    } catch {
+      // Keep clearing the rest of the folder.
+    }
+  }
 }

@@ -7,8 +7,9 @@ import { migrateDb } from '@/db/migrate';
 import { taskTable } from '@/db/schema';
 import { addMinutes, type Priority, type Task, type TaskCategory, type TaskDraft, type TaskKind, type TaskStatus } from '@/data/model';
 import type { PersonId } from '@/data/people';
-import { deleteTaskNote, saveTaskNote } from '@/lib/notes';
+import { deleteAllNotes, deleteTaskNote, saveTaskNote } from '@/lib/notes';
 import { prepareReminders, scheduleTaskReminder } from '@/lib/reminders';
+import { getRuntimePrefs } from '@/lib/runtime-prefs';
 
 const SAMPLE_TASK_IDS = [
   'meeting',
@@ -31,6 +32,9 @@ type TaskState = {
   addTask: (draft: TaskDraft) => Promise<void>;
   updateTask: (id: string, draft: TaskDraft) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  clearTasks: () => Promise<void>;
+  replaceTasks: (tasks: Task[]) => Promise<void>;
+  syncReminders: () => Promise<void>;
 };
 
 let hydrating: Promise<void> | null = null;
@@ -60,7 +64,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       description: draft.description,
       date: draft.date,
       start: draft.start,
-      end: draft.start === current.start ? current.end : addMinutes(draft.start, 60),
+      end: draft.start === current.start ? current.end : addMinutes(draft.start, getRuntimePrefs().defaultDuration),
       priority: draft.priority,
       project: draft.project,
       tags: draft.tags,
@@ -71,6 +75,35 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   deleteTask: async (id) => {
     await forgetTask(id);
     set({ tasks: get().tasks.filter((item) => item.id !== id) });
+  },
+  clearTasks: async () => {
+    await wipeTasks();
+    set({ tasks: [] });
+  },
+  replaceTasks: async (tasks) => {
+    await wipeTasks();
+    const db = await getDb();
+    for (const task of tasks) {
+      db.insert(taskTable)
+        .values({
+          ...taskValues(task),
+          notificationId: await scheduleTaskReminder(task),
+          noteUri: writeNote(task),
+        })
+        .run();
+    }
+    set({ tasks });
+  },
+  syncReminders: async () => {
+    const db = await getDb();
+    const rows = db.select().from(taskTable).all();
+    for (const row of rows) {
+      await cancelReminder(row.notificationId);
+      const notificationId = await scheduleTaskReminder(toTask(row));
+      if (notificationId !== row.notificationId) {
+        db.update(taskTable).set({ notificationId }).where(eq(taskTable.id, row.id)).run();
+      }
+    }
   },
 }));
 
@@ -132,22 +165,7 @@ async function persistTask(task: Task, mode: 'insert' | 'update') {
   }
 
   const values = {
-    id: task.id,
-    title: task.title,
-    description: task.description,
-    date: task.date,
-    start: task.start,
-    end: task.end,
-    priority: task.priority,
-    status: task.status,
-    category: task.category,
-    project: task.project,
-    tags: JSON.stringify(task.tags),
-    people: JSON.stringify(task.people),
-    extraPeople: task.extraPeople,
-    scheduled: task.scheduled,
-    starred: task.starred,
-    kind: task.kind,
+    ...taskValues(task),
     notificationId: await scheduleTaskReminder(task),
     noteUri: writeNote(task),
   };
@@ -158,6 +176,14 @@ async function persistTask(task: Task, mode: 'insert' | 'update') {
   }
 
   db.update(taskTable).set(values).where(eq(taskTable.id, task.id)).run();
+}
+
+async function wipeTasks() {
+  const db = await getDb();
+  const rows = db.select().from(taskTable).all();
+  for (const row of rows) await cancelReminder(row.notificationId);
+  db.delete(taskTable).run();
+  deleteAllNotes();
 }
 
 async function forgetTask(id: string) {
@@ -208,6 +234,27 @@ function toTask(row: typeof taskTable.$inferSelect): Task {
   };
 }
 
+function taskValues(task: Task) {
+  return {
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    date: task.date,
+    start: task.start,
+    end: task.end,
+    priority: task.priority,
+    status: task.status,
+    category: task.category,
+    project: task.project,
+    tags: JSON.stringify(task.tags),
+    people: JSON.stringify(task.people),
+    extraPeople: task.extraPeople,
+    scheduled: task.scheduled,
+    starred: task.starred,
+    kind: task.kind,
+  };
+}
+
 function draftToTask(draft: TaskDraft): Task {
   return {
     id: `task-${Date.now()}`,
@@ -215,7 +262,7 @@ function draftToTask(draft: TaskDraft): Task {
     description: draft.description,
     date: draft.date,
     start: draft.start,
-    end: addMinutes(draft.start, 60),
+    end: addMinutes(draft.start, getRuntimePrefs().defaultDuration),
     priority: draft.priority,
     status: 'todo',
     category: 'work',

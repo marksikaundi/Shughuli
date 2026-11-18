@@ -1,4 +1,5 @@
 import type { PersonId } from '@/data/people';
+import { getRuntimePrefs, type DateFormat, type TimeFormat, type WeekStart } from '@/lib/runtime-prefs';
 
 export type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done';
 export type TaskCategory = 'work' | 'personal';
@@ -41,28 +42,38 @@ export function toDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export function startOfWeek(date: Date) {
+export function startOfWeek(date: Date, weekStartsOn: WeekStart = getRuntimePrefs().weekStartsOn) {
   const copy = new Date(date);
   const weekday = copy.getDay();
-  const diff = weekday === 0 ? -6 : 1 - weekday;
+  const diff = weekStartsOn === 'sunday' ? -weekday : weekday === 0 ? -6 : 1 - weekday;
   copy.setDate(copy.getDate() + diff);
   copy.setHours(0, 0, 0, 0);
   return copy;
 }
 
-export function formatClock(value: string) {
+export function formatClock(value: string, timeFormat: TimeFormat = getRuntimePrefs().timeFormat) {
   const [hourPart, minutePart] = value.split(':');
   const hour = Number(hourPart);
-  const minute = Number(minutePart);
+  const minute = String(Number(minutePart) || 0).padStart(2, '0');
+  if (timeFormat === '24') return `${String(hour).padStart(2, '0')}:${minute}`;
   const suffix = hour >= 12 ? 'PM' : 'AM';
   const twelve = hour % 12 || 12;
-  return `${twelve}:${String(minute).padStart(2, '0')} ${suffix}`;
+  return `${twelve}:${minute} ${suffix}`;
 }
 
-export function splitClock(value: string) {
-  const clock = formatClock(value);
-  const [time, suffix] = clock.split(' ');
+export function splitClock(value: string, timeFormat: TimeFormat = getRuntimePrefs().timeFormat) {
+  if (timeFormat === '24') return { time: formatClock(value, '24'), suffix: '' };
+  const [time, suffix] = formatClock(value, '12').split(' ');
   return { time, suffix };
+}
+
+export function formatDate(date: Date, dateFormat: DateFormat = getRuntimePrefs().dateFormat) {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear());
+  if (dateFormat === 'mdy') return `${month}/${day}/${year}`;
+  if (dateFormat === 'ymd') return `${year}-${month}-${day}`;
+  return `${day}/${month}/${year}`;
 }
 
 export function periodOf(value: string) {

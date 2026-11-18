@@ -1,6 +1,7 @@
 export {
   addMinutes,
   formatClock,
+  formatDate,
   periodOf,
   splitClock,
   startOfWeek,
