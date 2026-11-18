@@ -1,4 +1,4 @@
-import * as Calendar from 'expo-calendar';
+import * as Calendar from 'expo-calendar/legacy';
 import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
@@ -6,7 +6,6 @@ import { taskMoment, toDateKey, type Task } from '@/data/model';
 
 const FILE_NAME = 'calendar.json';
 const CALENDAR_TITLE = 'Shughuli';
-const TASK_PROPERTY = 'private:shughuliTaskId';
 
 type Links = {
   calendarId: string;
@@ -41,7 +40,7 @@ export async function connectGoogleCalendar() {
     throw new Error('Google Calendar connects on the phone, using the Google account signed in there.');
   }
 
-  const permission = await Calendar.requestCalendarPermissions();
+  const permission = await Calendar.requestCalendarPermissionsAsync();
   if (!permission.granted) {
     throw new Error('Allow calendar access so Shughuli can add tasks to Google Calendar.');
   }
@@ -58,10 +57,10 @@ export async function connectGoogleCalendar() {
 export async function pullGoogleEvents(save: (tasks: Task[]) => Promise<void>) {
   const links = await readLinks();
   if (!links || Platform.OS === 'web') return;
-  const permission = await Calendar.getCalendarPermissions();
+  const permission = await Calendar.getCalendarPermissionsAsync();
   if (!permission.granted) return;
 
-  const calendars = (await Calendar.getCalendars(Calendar.EntityTypes.EVENT)).filter(isGoogle);
+  const calendars = (await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT)).filter(isGoogle);
   if (calendars.length === 0) return;
 
   const start = new Date();
@@ -71,7 +70,11 @@ export async function pullGoogleEvents(save: (tasks: Task[]) => Promise<void>) {
   end.setFullYear(end.getFullYear() + 1);
   end.setHours(23, 59, 59, 999);
   const known = new Set(Object.values(links.events));
-  const events = await Calendar.listEvents(calendars, start, end);
+  const events = await Calendar.getEventsAsync(
+    calendars.map((calendar) => calendar.id),
+    start,
+    end,
+  );
   const incoming: Task[] = [];
 
   events.forEach((event, index) => {
@@ -90,7 +93,7 @@ export async function syncAllTasks(tasks: Task[]) {
   if (Platform.OS === 'web') return;
   const links = await readLinks();
   if (!links) return;
-  const permission = await Calendar.getCalendarPermissions();
+  const permission = await Calendar.getCalendarPermissionsAsync();
   if (!permission.granted) return;
   for (const task of tasks) {
     await syncTaskToCalendar(task);
@@ -121,15 +124,19 @@ export async function googleEventsOn(date: Date): Promise<GoogleScheduleItem[]> 
   if (Platform.OS === 'web') return [];
   const links = await readLinks();
   if (!links) return [];
-  const permission = await Calendar.getCalendarPermissions();
+  const permission = await Calendar.getCalendarPermissionsAsync();
   if (!permission.granted) return [];
 
-  const calendars = (await Calendar.getCalendars(Calendar.EntityTypes.EVENT)).filter(isGoogle);
+  const calendars = (await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT)).filter(isGoogle);
   if (calendars.length === 0) return [];
   const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
   const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
   const mirrored = new Set(Object.values(links.events));
-  const events = await Calendar.listEvents(calendars, start, end);
+  const events = await Calendar.getEventsAsync(
+    calendars.map((calendar) => calendar.id),
+    start,
+    end,
+  );
   return events
     .filter((event) => !mirrored.has(event.id))
     .map((event) => ({
@@ -161,8 +168,7 @@ async function upsertTask(task: Task) {
   const existingId = links.events[task.id];
   if (existingId) {
     try {
-      const event = await Calendar.ExpoCalendarEvent.get(existingId);
-      await event.update(details);
+      await Calendar.updateEventAsync(existingId, details);
       return;
     } catch {
       delete links.events[task.id];
@@ -170,12 +176,8 @@ async function upsertTask(task: Task) {
   }
 
   try {
-    const calendar = await Calendar.ExpoCalendar.get(links.calendarId);
-    const created = await calendar.createEvent(details);
-    if (Platform.OS === 'android') {
-      await created.setExtendedProperty(TASK_PROPERTY, task.id).catch(() => undefined);
-    }
-    links.events[task.id] = created.id;
+    const createdId = await Calendar.createEventAsync(links.calendarId, details);
+    links.events[task.id] = createdId;
     await writeLinks(links);
   } catch {
     // The phone calendar can reject a write without losing the task in Shughuli.
@@ -194,15 +196,14 @@ async function dropTask(taskId: string, known?: Links) {
 
 async function deleteEvent(eventId: string) {
   try {
-    const event = await Calendar.ExpoCalendarEvent.get(eventId);
-    await event.delete();
+    await Calendar.deleteEventAsync(eventId);
   } catch {
     // The event may already have been removed in Google Calendar.
   }
 }
 
 async function ensureShughuliCalendar() {
-  const calendars = await Calendar.getCalendars(Calendar.EntityTypes.EVENT);
+  const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
   const google = calendars.filter((calendar) => isGoogle(calendar) && calendar.allowsModifications);
   if (google.length === 0) {
     throw new Error('Add the Google account in this phone’s Calendar settings, then connect again.');
@@ -213,7 +214,7 @@ async function ensureShughuliCalendar() {
 
   const host = google.find((calendar) => calendar.isPrimary) ?? google[0];
   try {
-    return await Calendar.createCalendar({
+    const id = await Calendar.createCalendarAsync({
       title: CALENDAR_TITLE,
       color: '#5B8DEF',
       entityType: Calendar.EntityTypes.EVENT,
@@ -223,18 +224,20 @@ async function ensureShughuliCalendar() {
       ownerAccount: host.ownerAccount ?? host.source?.name,
       accessLevel: Calendar.CalendarAccessLevel.OWNER,
     });
+    const created = (await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT)).find((calendar) => calendar.id === id);
+    return created ?? { ...host, id, title: CALENDAR_TITLE };
   } catch {
     return host;
   }
 }
 
-function isGoogle(calendar: Calendar.ExpoCalendar) {
+function isGoogle(calendar: Calendar.Calendar) {
   const type = String(calendar.source?.type ?? '').toLowerCase();
   const account = `${calendar.source?.name ?? ''} ${calendar.ownerAccount ?? ''}`.toLowerCase();
   return type.includes('google') || account.includes('@gmail.') || account.includes('@googlemail.') || account.includes('@google.');
 }
 
-function eventToTask(event: Calendar.ExpoCalendarEvent, index: number): Task {
+function eventToTask(event: Calendar.Event, index: number): Task {
   const start = asDate(event.startDate);
   const end = asDate(event.endDate);
   const sameDay = toDateKey(start) === toDateKey(end);
