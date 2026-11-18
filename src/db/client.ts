@@ -1,14 +1,11 @@
 import { drizzle, type ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
-import { openDatabaseSync } from 'expo-sqlite';
+import { openDatabaseAsync } from 'expo-sqlite';
 
 import * as schema from '@/db/schema';
 
-let database: ExpoSQLiteDatabase<typeof schema> | null = null;
+let opening: Promise<ExpoSQLiteDatabase<typeof schema>> | null = null;
 
 export function getDb() {
-  if (!database) {
-    const sqlite = openDatabaseSync('shughuli.db');
-    database = drizzle(sqlite, { schema });
-  }
-  return database;
+  opening ??= openDatabaseAsync('shughuli.db').then((sqlite) => drizzle(sqlite, { schema }));
+  return opening;
 }

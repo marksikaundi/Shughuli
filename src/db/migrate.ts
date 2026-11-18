@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS \`tasks\` (
 `;
 
 export async function migrateDb() {
-  await migrate(getDb(), {
+  const db = await getDb();
+  await migrate(db, {
     journal: {
       entries: [{ idx: 0, when: 1, tag: '0000_init', breakpoints: true }],
     },

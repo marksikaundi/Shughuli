@@ -45,13 +45,13 @@ async function loadTasks(set: (partial: Partial<TaskState>) => void) {
   try {
     await migrateDb();
     await prepareReminders();
-    const existing = getDb().select().from(taskTable).all();
+    const existing = await readTasks();
     if (existing.length === 0) {
       for (const task of seedTasks()) {
         await rememberTask(task);
       }
     }
-    set({ tasks: readTasks(), ready: true, error: null });
+    set({ tasks: await readTasks(), ready: true, error: null });
   } catch (error) {
     set({
       ready: true,
@@ -63,8 +63,8 @@ async function loadTasks(set: (partial: Partial<TaskState>) => void) {
 async function rememberTask(task: Task) {
   const noteUri = writeNote(task);
   const notificationId = await scheduleTaskReminder(task);
-  getDb()
-    .insert(taskTable)
+  const db = await getDb();
+  db.insert(taskTable)
     .values({
       id: task.id,
       title: task.title,
@@ -88,8 +88,9 @@ async function rememberTask(task: Task) {
     .run();
 }
 
-function readTasks() {
-  return getDb()
+async function readTasks() {
+  const db = await getDb();
+  return db
     .select()
     .from(taskTable)
     .all()
