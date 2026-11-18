@@ -22,7 +22,7 @@ import {
 import { usePreferencesStore } from '@/store/preferences';
 import { useTaskStore } from '@/store/tasks';
 
-const WEB_BACKUPS = 'shughuli.backups';
+export class ActionCancelled extends Error {}
 
 export type BackupRecord = {
   name: string;
@@ -108,9 +108,8 @@ export async function restoreBackup(record: BackupRecord) {
 export async function restorePickedFile() {
   if (Platform.OS === 'web') throw new Error('Choose a backup from the list saved in this browser.');
   const picked = await File.pickFileAsync({ mimeTypes: ['application/json', 'text/plain', 'text/*'] });
-  if (picked.canceled || !picked.result) return false;
+  if (picked.canceled || !picked.result) throw new ActionCancelled();
   await restoreJson(picked.result.textSync());
-  return true;
 }
 
 export async function chooseAvatar() {
