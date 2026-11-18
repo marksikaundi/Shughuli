@@ -1,4 +1,4 @@
-import { inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import * as Notifications from 'expo-notifications';
 import { create } from 'zustand';
 
@@ -29,6 +29,8 @@ type TaskState = {
   error: string | null;
   hydrate: () => Promise<void>;
   addTask: (draft: TaskDraft) => Promise<void>;
+  updateTask: (id: string, draft: TaskDraft) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
 };
 
 let hydrating: Promise<void> | null = null;
@@ -49,12 +51,35 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     await rememberTask(task);
     set({ tasks: [task, ...get().tasks.filter((item) => item.id !== task.id)] });
   },
+  updateTask: async (id, draft) => {
+    const current = get().tasks.find((item) => item.id === id);
+    if (!current) throw new Error('This task is no longer on this device.');
+    const task: Task = {
+      ...current,
+      title: draft.title,
+      description: draft.description,
+      date: draft.date,
+      start: draft.start,
+      end: draft.start === current.start ? current.end : addMinutes(draft.start, 60),
+      priority: draft.priority,
+      project: draft.project,
+      tags: draft.tags,
+    };
+    await persistTask(task, 'update');
+    set({ tasks: get().tasks.map((item) => (item.id === id ? task : item)) });
+  },
+  deleteTask: async (id) => {
+    await forgetTask(id);
+    set({ tasks: get().tasks.filter((item) => item.id !== id) });
+  },
 }));
 
 export function useTasks() {
   const tasks = useTaskStore((state) => state.tasks);
   const addTask = useTaskStore((state) => state.addTask);
-  return { tasks, addTask };
+  const updateTask = useTaskStore((state) => state.updateTask);
+  const deleteTask = useTaskStore((state) => state.deleteTask);
+  return { tasks, addTask, updateTask, deleteTask };
 }
 
 async function loadTasks(set: (partial: Partial<TaskState>) => void) {
@@ -81,13 +106,7 @@ async function removeSampleTasks() {
   if (rows.length === 0) return;
 
   for (const row of rows) {
-    if (row.notificationId) {
-      try {
-        await Notifications.cancelScheduledNotificationAsync(row.notificationId);
-      } catch {
-        // The reminder may already be gone.
-      }
-    }
+    await cancelReminder(row.notificationId);
     deleteTaskNote(row.id);
   }
 
@@ -102,31 +121,60 @@ async function removeSampleTasks() {
 }
 
 async function rememberTask(task: Task) {
-  const noteUri = writeNote(task);
-  const notificationId = await scheduleTaskReminder(task);
+  await persistTask(task, 'insert');
+}
+
+async function persistTask(task: Task, mode: 'insert' | 'update') {
   const db = await getDb();
-  db.insert(taskTable)
-    .values({
-      id: task.id,
-      title: task.title,
-      description: task.description,
-      date: task.date,
-      start: task.start,
-      end: task.end,
-      priority: task.priority,
-      status: task.status,
-      category: task.category,
-      project: task.project,
-      tags: JSON.stringify(task.tags),
-      people: JSON.stringify(task.people),
-      extraPeople: task.extraPeople,
-      scheduled: task.scheduled,
-      starred: task.starred,
-      kind: task.kind,
-      notificationId,
-      noteUri,
-    })
-    .run();
+  if (mode === 'update') {
+    const existing = db.select().from(taskTable).where(eq(taskTable.id, task.id)).get();
+    await cancelReminder(existing?.notificationId ?? null);
+  }
+
+  const values = {
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    date: task.date,
+    start: task.start,
+    end: task.end,
+    priority: task.priority,
+    status: task.status,
+    category: task.category,
+    project: task.project,
+    tags: JSON.stringify(task.tags),
+    people: JSON.stringify(task.people),
+    extraPeople: task.extraPeople,
+    scheduled: task.scheduled,
+    starred: task.starred,
+    kind: task.kind,
+    notificationId: await scheduleTaskReminder(task),
+    noteUri: writeNote(task),
+  };
+
+  if (mode === 'insert') {
+    db.insert(taskTable).values(values).run();
+    return;
+  }
+
+  db.update(taskTable).set(values).where(eq(taskTable.id, task.id)).run();
+}
+
+async function forgetTask(id: string) {
+  const db = await getDb();
+  const existing = db.select().from(taskTable).where(eq(taskTable.id, id)).get();
+  await cancelReminder(existing?.notificationId ?? null);
+  deleteTaskNote(id);
+  db.delete(taskTable).where(eq(taskTable.id, id)).run();
+}
+
+async function cancelReminder(notificationId: string | null) {
+  if (!notificationId) return;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(notificationId);
+  } catch {
+    // The reminder may already be gone.
+  }
 }
 
 async function readTasks() {

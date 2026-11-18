@@ -194,7 +194,11 @@ function ScheduleCard({ task, last }: { task: Task; last: boolean }) {
         <View style={styles.railDot} />
         {last ? null : <View style={styles.railLine} />}
       </View>
-      <View style={styles.eventCard}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Edit ${task.title}`}
+        onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
+        style={styles.eventCard}>
         <Text style={styles.eventTitle}>{task.title}</Text>
         {task.kind === 'meeting' ? (
           <Text style={styles.eventBody}>{task.description}</Text>
@@ -218,7 +222,7 @@ function ScheduleCard({ task, last }: { task: Task; last: boolean }) {
             </View>
           )}
         </View>
-      </View>
+      </Pressable>
     </View>
   );
 }

@@ -139,15 +139,19 @@ function TaskCard({ task }: { task: Task }) {
   const tone = PRIORITY_TONE[task.priority];
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Edit ${task.title}`}
+      onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
+      style={styles.card}>
       <View style={styles.cardTop}>
         <View style={[styles.priority, { backgroundColor: tone.bg }]}>
           <View style={[styles.priorityDot, { backgroundColor: tone.text }]} />
           <Text style={[styles.priorityText, { color: tone.text }]}>{tone.label}</Text>
         </View>
-        <Pressable style={styles.arrow} accessibilityLabel={`Open ${task.title}`}>
+        <View style={styles.arrow}>
           <Icon name="arrow" size={14} color={Palette.ink} />
-        </Pressable>
+        </View>
       </View>
       <Text style={styles.cardTitle}>{task.title}</Text>
       <View style={styles.cardFooter}>
@@ -158,7 +162,7 @@ function TaskCard({ task }: { task: Task }) {
           </Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

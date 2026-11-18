@@ -1,6 +1,7 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
-import { toDateKey, useTasks, type Priority } from '@/data/tasks';
+import { formatClock, toDateKey, useTasks, type Priority, type Task } from '@/data/tasks';
 
 const PRIORITIES: { id: Priority; label: string }[] = [
   { id: 'low', label: 'Low' },
@@ -24,23 +25,35 @@ const PRIORITIES: { id: Priority; label: string }[] = [
 ];
 
 export default function AddTaskScreen() {
+  const params = useLocalSearchParams<{ id?: string }>();
+  const taskId = typeof params.id === 'string' ? params.id : undefined;
+  const { tasks } = useTasks();
+  const task = taskId ? tasks.find((item) => item.id === taskId) : undefined;
+
+  if (taskId && !task) {
+    return <MissingTask />;
+  }
+
+  return <TaskForm key={task?.id ?? 'new'} task={task} />;
+}
+
+function TaskForm({ task }: { task?: Task }) {
   const insets = useSafeAreaInsets();
-  const { addTask } = useTasks();
-  const today = new Date();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<Priority>('low');
-  const [project, setProject] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
+  const { addTask, updateTask, deleteTask } = useTasks();
+  const editing = Boolean(task);
+  const [title, setTitle] = useState(task?.title ?? '');
+  const [description, setDescription] = useState(task?.description ?? '');
+  const [priority, setPriority] = useState<Priority>(task?.priority ?? 'low');
+  const [project, setProject] = useState(task?.project ?? '');
+  const [tags, setTags] = useState<string[]>(task?.tags ?? []);
   const [addingTag, setAddingTag] = useState(false);
   const [tagDraft, setTagDraft] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const date = task?.date ?? toDateKey(new Date());
+  const start = task?.start ?? '10:00';
 
-  const dueLabel = today.toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const dueLabel = dueDateLabel(date);
 
   function commitTag() {
     const next = tagDraft.trim();
@@ -60,24 +73,58 @@ export default function AddTaskScreen() {
   }
 
   async function save() {
+    if (busy) return;
     const nextTitle = title.trim();
     if (!nextTitle) {
       setError('Add a task title');
       return;
     }
+    const draft = {
+      title: nextTitle,
+      description: description.trim(),
+      date,
+      start,
+      priority,
+      project: project.trim(),
+      tags,
+    };
+    setBusy(true);
     try {
-      await addTask({
-        title: nextTitle,
-        description: description.trim(),
-        date: toDateKey(today),
-        start: '10:00',
-        priority,
-        project: project.trim(),
-        tags,
-      });
+      if (task) {
+        await updateTask(task.id, draft);
+      } else {
+        await addTask(draft);
+      }
       leave();
     } catch {
+      setBusy(false);
       setError('Could not save this task on the device.');
+    }
+  }
+
+  function confirmDelete() {
+    if (!task || busy) return;
+    Alert.alert('Delete this task?', 'It will be removed from this device.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          void remove();
+        },
+      },
+    ]);
+  }
+
+  async function remove() {
+    if (!task) return;
+    setBusy(true);
+    try {
+      await deleteTask(task.id);
+      leave();
+    } catch {
+      setBusy(false);
+      setError('Could not delete this task on the device.');
     }
   }
 
@@ -95,7 +142,7 @@ export default function AddTaskScreen() {
           }}>
           <View style={styles.header}>
             <IconButton icon="close" accessibilityLabel="Close" onPress={leave} />
-            <Text style={styles.headerTitle}>Add New Task</Text>
+            <Text style={styles.headerTitle}>{editing ? 'Edit Task' : 'Add New Task'}</Text>
             <IconButton icon="check" accessibilityLabel="Save task" onPress={save} />
           </View>
 
@@ -135,7 +182,7 @@ export default function AddTaskScreen() {
               </View>
               <View style={[styles.input, styles.timeField]}>
                 <Icon name="clock" size={16} color={Palette.ink} />
-                <Text style={styles.dueText}>10:00 AM</Text>
+                <Text style={styles.dueText}>{formatClock(start)}</Text>
               </View>
             </View>
           </Field>
@@ -214,13 +261,56 @@ export default function AddTaskScreen() {
             </View>
           </Field>
 
-          <Pressable style={({ pressed }) => [styles.create, pressed && styles.pressed]} onPress={save}>
-            <Text style={styles.createText}>Create Task</Text>
+          <Pressable
+            disabled={busy}
+            style={({ pressed }) => [styles.create, pressed && styles.pressed]}
+            onPress={save}>
+            <Text style={styles.createText}>{editing ? 'Save Changes' : 'Create Task'}</Text>
           </Pressable>
+          {editing ? (
+            <Pressable
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Delete task"
+              style={({ pressed }) => [styles.delete, pressed && styles.pressed]}
+              onPress={confirmDelete}>
+              <Text style={styles.deleteText}>Delete Task</Text>
+            </Pressable>
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
   );
+}
+
+function MissingTask() {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Screen>
+      <View style={[styles.missing, { paddingTop: insets.top + 8, paddingHorizontal: Layout.padding }]}>
+        <IconButton
+          icon="close"
+          accessibilityLabel="Close"
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/');
+          }}
+        />
+        <Text style={styles.missingTitle}>This task is gone</Text>
+        <Text style={styles.missingBody}>It is no longer saved on this device.</Text>
+      </View>
+    </Screen>
+  );
+}
+
+function dueDateLabel(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -395,6 +485,34 @@ const styles = StyleSheet.create({
     color: Palette.white,
     fontSize: 16,
     fontWeight: 700,
+  },
+  delete: {
+    marginTop: 12,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteText: {
+    color: Palette.danger,
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  missing: {
+    flex: 1,
+    gap: 12,
+  },
+  missingTitle: {
+    marginTop: 24,
+    color: Palette.ink,
+    fontSize: 22,
+    fontWeight: 700,
+  },
+  missingBody: {
+    color: Palette.muted,
+    fontSize: 15,
+    lineHeight: 22,
   },
   pressed: {
     opacity: 0.85,
