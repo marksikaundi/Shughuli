@@ -5,7 +5,6 @@ export const ACCENTS = [
   { id: 'lime', color: '#C8F06E', ring: '#C8F06E' },
   { id: 'blue', color: '#5B8DEF', ring: '#8EB4FF' },
   { id: 'rose', color: '#E58B86', ring: '#F3A19C' },
-  { id: 'amber', color: '#E0A84A', ring: '#F5C451' },
   { id: 'violet', color: '#A78BDB', ring: '#C9B6F4' },
 ] as const;
 
