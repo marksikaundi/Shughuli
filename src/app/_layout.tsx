@@ -6,6 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AppLockShell } from '@/components/app-lock-shell';
 import { Palette } from '@/constants/palette';
+import { syncPlannedReminders } from '@/lib/planned-reminders';
 import { usePreferencesStore } from '@/store/preferences';
 import { useTaskStore } from '@/store/tasks';
 
@@ -18,9 +19,15 @@ export default function RootLayout() {
   const reduceMotion = usePreferencesStore((state) => state.prefs.reduceMotion);
 
   useEffect(() => {
-    Promise.all([useTaskStore.getState().hydrate(), usePreferencesStore.getState().hydrate()]).finally(() => {
-      SplashScreen.hideAsync();
-    });
+    Promise.all([useTaskStore.getState().hydrate(), usePreferencesStore.getState().hydrate()])
+      .then(async () => {
+        if (useTaskStore.getState().error) return;
+        await useTaskStore.getState().syncReminders();
+        await syncPlannedReminders(usePreferencesStore.getState().prefs);
+      })
+      .finally(() => {
+        SplashScreen.hideAsync();
+      });
   }, []);
 
   if (!ready || !prefsReady) return null;

@@ -51,21 +51,14 @@ export function useSave() {
   };
 }
 
-type ReminderKey =
-  | 'taskReminders'
-  | 'habitReminders'
-  | 'dailyPlanning'
-  | 'focusNotifications'
-  | 'endOfDayReview'
-  | 'notificationSound'
-  | 'notificationVibration';
+type ReminderKey = 'taskReminders' | 'habitReminders' | 'dailyPlanning' | 'focusNotifications' | 'endOfDayReview' | 'notificationVibration';
 
 export function useReminderToggle() {
   const save = useSave();
   const text = useCopy();
 
   return async (key: ReminderKey, value: boolean) => {
-    const needsPermission = value && key !== 'notificationSound' && key !== 'notificationVibration';
+    const needsPermission = value && key !== 'notificationVibration';
     if (needsPermission && Platform.OS !== 'web') {
       const allowed = await ensureReminderPermission();
       if (!allowed) {

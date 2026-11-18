@@ -2,7 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import type { Preferences } from '@/data/preferences';
-import { configureReminderChannel } from '@/lib/reminders';
+import { configureReminderChannel, notificationSoundName, reminderChannelId } from '@/lib/reminders';
 
 const PLANNING_ID = 'shughuli-daily-planning';
 const REVIEW_ID = 'shughuli-end-of-day';
@@ -54,14 +54,14 @@ async function scheduleDaily(
     content: {
       title: message.title,
       body: message.body,
-      sound: prefs.notificationSound,
+      sound: notificationSoundName(prefs.notificationSound),
       vibrate: prefs.notificationVibration ? [0, 250, 200, 250] : undefined,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour,
       minute,
-      channelId: 'reminders',
+      channelId: reminderChannelId(prefs.notificationSound, prefs.notificationVibration),
     },
   });
 }

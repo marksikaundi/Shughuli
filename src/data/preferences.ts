@@ -1,5 +1,5 @@
 import type { Priority } from '@/data/model';
-import type { DateFormat, RuntimePrefs, TimeFormat, WeekStart } from '@/lib/runtime-prefs';
+import type { DateFormat, ReminderSound, RuntimePrefs, TimeFormat, WeekStart } from '@/lib/runtime-prefs';
 
 export const ACCENTS = [
   { id: 'lime', color: '#C8F06E', ring: '#C8F06E' },
@@ -32,7 +32,7 @@ export type Preferences = {
   dailyPlanning: boolean;
   focusNotifications: boolean;
   endOfDayReview: boolean;
-  notificationSound: boolean;
+  notificationSound: ReminderSound;
   notificationVibration: boolean;
   workMinutes: number;
   shortBreakMinutes: number;
@@ -71,7 +71,7 @@ export const defaultPreferences: Preferences = {
   dailyPlanning: false,
   focusNotifications: true,
   endOfDayReview: false,
-  notificationSound: true,
+  notificationSound: 'system',
   notificationVibration: true,
   workMinutes: 25,
   shortBreakMinutes: 5,
@@ -133,7 +133,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     dailyPlanning: bool(input.dailyPlanning, defaultPreferences.dailyPlanning),
     focusNotifications: bool(input.focusNotifications, defaultPreferences.focusNotifications),
     endOfDayReview: bool(input.endOfDayReview, defaultPreferences.endOfDayReview),
-    notificationSound: bool(input.notificationSound, defaultPreferences.notificationSound),
+    notificationSound: soundChoice(input.notificationSound),
     notificationVibration: bool(input.notificationVibration, defaultPreferences.notificationVibration),
     workMinutes: clamp(input.workMinutes, 15, 60, defaultPreferences.workMinutes),
     shortBreakMinutes: clamp(input.shortBreakMinutes, 1, 20, defaultPreferences.shortBreakMinutes),
@@ -175,6 +175,12 @@ function clock(value: unknown, fallback: string) {
   const [hour, minute] = value.split(':').map(Number);
   if (hour > 23 || minute > 59) return fallback;
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function soundChoice(value: unknown): ReminderSound {
+  if (value === false || value === 'none') return 'none';
+  if (value === 'chime' || value === 'bell' || value === 'system') return value;
+  return 'system';
 }
 
 function timeout(value: unknown): LockTimeout {

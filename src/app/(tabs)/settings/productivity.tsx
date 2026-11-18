@@ -12,10 +12,12 @@ export default function ProductivityScreen() {
   const prefs = usePreferencesStore((state) => state.prefs);
   const save = useSave();
   const toggle = useReminderToggle();
-  const [sheet, setSheet] = useState<'week' | 'priority' | 'done' | null>(null);
+  const [sheet, setSheet] = useState<'week' | 'priority' | 'done' | 'sound' | null>(null);
   const priorityLabel = prefs.defaultPriority === 'high' ? text.high : prefs.defaultPriority === 'medium' ? text.medium : text.low;
   const doneLabel =
     prefs.completedVisibility === 'show' ? text.showCompleted : prefs.completedVisibility === 'dim' ? text.dimCompleted : text.hideCompleted;
+  const soundLabel =
+    prefs.notificationSound === 'chime' ? text.timerChime : prefs.notificationSound === 'bell' ? text.timerBell : prefs.notificationSound === 'none' ? text.timerSilent : text.soundSystem;
 
   return (
     <SettingsPage title={text.productivity}>
@@ -50,9 +52,25 @@ export default function ProductivityScreen() {
         <ToggleRow icon="check" label={text.habitReminders} value={prefs.habitReminders} onChange={(value) => void toggle('habitReminders', value)} />
         <ToggleRow icon="sun" label={text.dailyPlanning} value={prefs.dailyPlanning} onChange={(value) => void toggle('dailyPlanning', value)} />
         <ToggleRow icon="moon" label={text.endOfDay} value={prefs.endOfDayReview} onChange={(value) => void toggle('endOfDayReview', value)} />
-        <ToggleRow icon="speaker" label={text.sound} value={prefs.notificationSound} onChange={(value) => void toggle('notificationSound', value)} />
+        <SettingsRow icon="speaker" label={text.sound} value={soundLabel} onPress={() => setSheet('sound')} />
         <ToggleRow icon="wave" label={text.vibration} value={prefs.notificationVibration} onChange={(value) => void toggle('notificationVibration', value)} border={false} />
       </SettingsSection>
+      <OptionSheet
+        visible={sheet === 'sound'}
+        title={text.sound}
+        selected={prefs.notificationSound}
+        options={[
+          { id: 'system', label: text.soundSystem },
+          { id: 'chime', label: text.timerChime },
+          { id: 'bell', label: text.timerBell },
+          { id: 'none', label: text.timerSilent },
+        ]}
+        onClose={() => setSheet(null)}
+        onSelect={(notificationSound) => {
+          setSheet(null);
+          void save({ notificationSound: notificationSound as Preferences['notificationSound'] });
+        }}
+      />
       <OptionSheet
         visible={sheet === 'week'}
         title={text.weekStart}

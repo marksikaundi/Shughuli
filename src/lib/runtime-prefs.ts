@@ -2,13 +2,15 @@ export type WeekStart = 'monday' | 'sunday';
 export type TimeFormat = '12' | '24';
 export type DateFormat = 'dmy' | 'mdy' | 'ymd';
 
+export type ReminderSound = 'system' | 'chime' | 'bell' | 'none';
+
 export type RuntimePrefs = {
   weekStartsOn: WeekStart;
   timeFormat: TimeFormat;
   dateFormat: DateFormat;
   defaultDuration: number;
   taskReminders: boolean;
-  notificationSound: boolean;
+  notificationSound: ReminderSound;
   notificationVibration: boolean;
   hideSensitive: boolean;
 };
@@ -19,7 +21,7 @@ const runtime: RuntimePrefs = {
   dateFormat: 'dmy',
   defaultDuration: 60,
   taskReminders: true,
-  notificationSound: true,
+  notificationSound: 'system',
   notificationVibration: true,
   hideSensitive: false,
 };

@@ -45,7 +45,8 @@
       [
         "expo-notifications",
         {
-          "enableRemoteNotifications": false
+          "enableRemoteNotifications": false,
+          "sounds": ["./assets/sounds/shughuli-chime.wav", "./assets/sounds/shughuli-bell.wav"]
         }
       ],
       "expo-sharing",
