@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/empty-state';
 import { Icon, IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
@@ -51,10 +52,14 @@ export default function ProjectsScreen() {
         </View>
 
         {projects.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No projects yet</Text>
-            <Text style={styles.emptyBody}>Name a project when you add a task, and it will show up here.</Text>
-          </View>
+          <EmptyState
+            icon="folder"
+            title="No projects yet"
+            body="Name a project when you add a task, and it will show up here."
+            actionLabel="Add a task"
+            onAction={() => router.push('/add-task')}
+            style={styles.empty}
+          />
         ) : (
           <View style={styles.list}>
             {projects.map((project) => {
@@ -108,21 +113,6 @@ const styles = StyleSheet.create({
   },
   empty: {
     marginTop: 22,
-    backgroundColor: Palette.white,
-    borderRadius: 24,
-    padding: 20,
-    ...cardShadow,
-  },
-  emptyTitle: {
-    color: Palette.ink,
-    fontSize: 16,
-    fontWeight: 700,
-  },
-  emptyBody: {
-    marginTop: 4,
-    color: Palette.muted,
-    fontSize: 14,
-    lineHeight: 20,
   },
   card: {
     backgroundColor: Palette.white,

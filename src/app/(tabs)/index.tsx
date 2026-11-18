@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/empty-state';
 import { Icon, IconButton } from '@/components/icon';
 import { ProgressRing } from '@/components/progress-ring';
 import { Screen } from '@/components/screen';
@@ -73,51 +74,64 @@ export default function HomeScreen() {
 
         <Text style={styles.headline}>{"Let's Make\nToday Productive"}</Text>
 
-        <View style={styles.progressCard}>
-          <ProgressRing progress={progress} />
-          <View style={styles.stats}>
-            <Stat icon="grid" value={String(todayTasks.length)} label="Total Task" />
-            <Stat icon="done" value={String(completed)} label="Completed Task" />
-            <Stat icon="pending" value={String(todaysTasks.length)} label="Pending Task" />
-          </View>
-        </View>
-
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>Today&apos;s Tasks</Text>
-          <Pressable onPress={() => setFilter('all')} hitSlop={8}>
-            <Text style={styles.viewAll}>View All</Text>
-          </Pressable>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filters}
-          style={styles.filterScroll}>
-          {FILTERS.map((item) => {
-            const selected = filter === item.id;
-            return (
-              <Pressable
-                key={item.id}
-                onPress={() => setFilter(item.id)}
-                style={[styles.chip, selected && styles.chipSelected]}>
-                <Text style={[styles.chipCount, selected && styles.chipCountSelected]}>{counts[item.id]}</Text>
-                <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{item.label}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        <View style={styles.list}>
-          {visible.length === 0 ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>Nothing in this list</Text>
-              <Text style={styles.emptyBody}>Tasks you add will show up here.</Text>
+        {tasks.length === 0 ? (
+          <EmptyState
+            title="Your day is open"
+            body="Add a task and it will show up here with its time and priority."
+            actionLabel="Add a task"
+            onAction={() => router.push('/add-task')}
+            style={styles.firstEmpty}
+          />
+        ) : (
+          <>
+            <View style={styles.progressCard}>
+              <ProgressRing progress={progress} />
+              <View style={styles.stats}>
+                <Stat icon="grid" value={String(todayTasks.length)} label="Total Task" />
+                <Stat icon="done" value={String(completed)} label="Completed Task" />
+                <Stat icon="pending" value={String(todaysTasks.length)} label="Pending Task" />
+              </View>
             </View>
-          ) : (
-            visible.map((task) => <TaskCard key={task.id} task={task} />)
-          )}
-        </View>
+
+            <View style={styles.sectionRow}>
+              <Text style={styles.sectionTitle}>Today&apos;s Tasks</Text>
+              <Pressable onPress={() => setFilter('all')} hitSlop={8}>
+                <Text style={styles.viewAll}>View All</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filters}
+              style={styles.filterScroll}>
+              {FILTERS.map((item) => {
+                const selected = filter === item.id;
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => setFilter(item.id)}
+                    style={[styles.chip, selected && styles.chipSelected]}>
+                    <Text style={[styles.chipCount, selected && styles.chipCountSelected]}>{counts[item.id]}</Text>
+                    <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{item.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <View style={styles.list}>
+              {visible.length === 0 ? (
+                <EmptyState
+                  compact
+                  title="Nothing in this list"
+                  body="Tasks with this status will show up here."
+                />
+              ) : (
+                visible.map((task) => <TaskCard key={task.id} task={task} />)
+              )}
+            </View>
+          </>
+        )}
       </ScrollView>
     </Screen>
   );
@@ -192,6 +206,9 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     fontWeight: 700,
     letterSpacing: -0.8,
+  },
+  firstEmpty: {
+    marginTop: 28,
   },
   progressCard: {
     marginTop: 20,
@@ -346,21 +363,5 @@ const styles = StyleSheet.create({
     color: Palette.muted,
     fontSize: 13,
     fontWeight: 500,
-  },
-  empty: {
-    backgroundColor: Palette.white,
-    borderRadius: 24,
-    padding: 20,
-    ...cardShadow,
-  },
-  emptyTitle: {
-    color: Palette.ink,
-    fontSize: 16,
-    fontWeight: 700,
-  },
-  emptyBody: {
-    marginTop: 4,
-    color: Palette.muted,
-    fontSize: 14,
   },
 });

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/empty-state';
 import { Icon, IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
@@ -137,10 +138,14 @@ export default function CalendarScreen() {
         </View>
 
         {groups.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Nothing scheduled</Text>
-            <Text style={styles.emptyBody}>This day is open. Add a task to put it on the timeline.</Text>
-          </View>
+          <EmptyState
+            icon="calendar"
+            title="Nothing scheduled"
+            body="This day is open. Add a task to put it on the timeline."
+            actionLabel="Add a task"
+            onAction={() => router.push('/add-task')}
+            style={styles.empty}
+          />
         ) : (
           groups.map((group, groupIndex) => (
             <View key={group.label} style={styles.group}>
@@ -484,20 +489,5 @@ const styles = StyleSheet.create({
   },
   empty: {
     marginTop: 24,
-    backgroundColor: Palette.white,
-    borderRadius: 24,
-    padding: 20,
-    ...cardShadow,
-  },
-  emptyTitle: {
-    color: Palette.ink,
-    fontSize: 16,
-    fontWeight: 700,
-  },
-  emptyBody: {
-    marginTop: 4,
-    color: Palette.muted,
-    fontSize: 14,
-    lineHeight: 20,
   },
 });
