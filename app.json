@@ -91,6 +91,9 @@
       "eas": {
         "projectId": "f38ab26f-73c5-43c9-95c6-702550ef096b"
       }
+    },
+    "ios": {
+      "bundleIdentifier": "shughuli.com"
     }
   }
 }
