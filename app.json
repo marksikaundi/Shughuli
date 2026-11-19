@@ -72,7 +72,8 @@
         {
           "faceIDPermission": "Shughuli uses Face ID to unlock your tasks on this device."
         }
-      ]
+      ],
+      "./plugins/withOptionalPortrait.js"
     ],
     "experiments": {
       "typedRoutes": true,
