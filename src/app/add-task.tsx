@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
+import { useProjects } from '@/data/projects';
 import { formatClock, formatDate, toDateKey, useTasks, type Priority, type Task } from '@/data/tasks';
 import { usePreferencesStore } from '@/store/preferences';
 
@@ -26,8 +27,9 @@ const PRIORITIES: { id: Priority; label: string }[] = [
 ];
 
 export default function AddTaskScreen() {
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; project?: string }>();
   const taskId = typeof params.id === 'string' ? params.id : undefined;
+  const presetProject = typeof params.project === 'string' ? params.project : '';
   const { tasks } = useTasks();
   const task = taskId ? tasks.find((item) => item.id === taskId) : undefined;
 
@@ -35,12 +37,13 @@ export default function AddTaskScreen() {
     return <MissingTask />;
   }
 
-  return <TaskForm key={task?.id ?? 'new'} task={task} />;
+  return <TaskForm key={task?.id ?? `new-${presetProject}`} task={task} initialProject={presetProject} />;
 }
 
-function TaskForm({ task }: { task?: Task }) {
+function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?: string }) {
   const insets = useSafeAreaInsets();
   const { addTask, updateTask, deleteTask } = useTasks();
+  const { projects } = useProjects();
   const defaultPriority = usePreferencesStore((state) => state.prefs.defaultPriority);
   const planningStart = usePreferencesStore((state) => state.prefs.planningStart);
   const duration = usePreferencesStore((state) => state.prefs.defaultDuration);
@@ -50,7 +53,16 @@ function TaskForm({ task }: { task?: Task }) {
   const [title, setTitle] = useState(task?.title ?? '');
   const [description, setDescription] = useState(task?.description ?? '');
   const [priority, setPriority] = useState<Priority>(task?.priority ?? defaultPriority);
-  const [project, setProject] = useState(task?.project ?? '');
+  const projectOptions = useMemo(() => {
+    const names = projects.map((item) => item.name);
+    const current = task?.project.trim() ?? '';
+    if (current && !names.some((name) => name.toLowerCase() === current.toLowerCase())) {
+      return [current, ...names];
+    }
+    return names;
+  }, [projects, task?.project]);
+  const preset = projectOptions.find((name) => name.toLowerCase() === initialProject.trim().toLowerCase()) ?? '';
+  const [project, setProject] = useState(task?.project.trim() || preset);
   const [tags, setTags] = useState<string[]>(task?.tags ?? []);
   const [addingTag, setAddingTag] = useState(false);
   const [tagDraft, setTagDraft] = useState('');
@@ -227,16 +239,26 @@ function TaskForm({ task }: { task?: Task }) {
           </Field>
 
           <Field label="Project">
-            <View style={styles.input}>
-              <Icon name="folder" size={16} color={Palette.ink} />
-              <TextInput
-                value={project}
-                onChangeText={setProject}
-                placeholder="Project name"
-                placeholderTextColor={Palette.faint}
-                style={styles.projectInput}
-              />
-            </View>
+            {projectOptions.length === 0 ? (
+              <Text style={styles.projectHint}>Create a project in Projects, then choose it here.</Text>
+            ) : (
+              <View style={styles.projects}>
+                {projectOptions.map((name) => {
+                  const selected = project.toLowerCase() === name.toLowerCase();
+                  return (
+                    <Pressable
+                      key={name}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      onPress={() => setProject(selected ? '' : name)}
+                      style={[styles.projectChip, selected && styles.projectChipSelected]}>
+                      <Icon name="folder" size={14} color={Palette.ink} />
+                      <Text style={styles.projectChipText}>{name}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </Field>
 
           <Field label="Tags">
@@ -393,12 +415,38 @@ const styles = StyleSheet.create({
     fontWeight: 600,
     flexShrink: 1,
   },
-  projectInput: {
-    flex: 1,
+  projectHint: {
+    color: Palette.muted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  projects: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  projectChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Palette.white,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    height: 40,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    ...cardShadow,
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+  },
+  projectChipSelected: {
+    borderColor: Palette.ink,
+    backgroundColor: Palette.limeChip,
+  },
+  projectChipText: {
     color: Palette.ink,
-    fontSize: 15,
-    fontWeight: 600,
-    paddingVertical: 0,
+    fontSize: 14,
+    fontWeight: 700,
   },
   priorities: {
     flexDirection: 'row',

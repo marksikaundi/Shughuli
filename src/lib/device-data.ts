@@ -20,6 +20,7 @@ import {
   listBackupFiles,
 } from '@/lib/storage-info';
 import { usePreferencesStore } from '@/store/preferences';
+import { projectsFromNames, useProjectStore, type Project } from '@/store/projects';
 import { useTaskStore } from '@/store/tasks';
 
 const WEB_BACKUPS = 'shughuli.backups';
@@ -38,6 +39,7 @@ type BackupFile = {
   version: 1;
   exportedAt: string;
   tasks: Task[];
+  projects: Project[];
   notes: { id: string; text: string }[];
   preferences: Preferences;
 };
@@ -149,6 +151,7 @@ export async function clearCache() {
 
 export async function clearPersonalData() {
   await useTaskStore.getState().clearTasks();
+  await useProjectStore.getState().clearProjects();
   await cancelPlannedReminders();
   await removeAvatar();
   await clearPin();
@@ -164,6 +167,7 @@ export async function clearPersonalData() {
 export async function deleteAllData() {
   await cancelPlannedReminders();
   await useTaskStore.getState().clearTasks();
+  await useProjectStore.getState().clearProjects();
   await clearPin();
   await clearCache();
   if (Platform.OS === 'web') {
@@ -188,6 +192,7 @@ export async function deleteAllData() {
 async function restoreJson(raw: string) {
   const backup = parseBackup(raw);
   await useTaskStore.getState().replaceTasks(backup.tasks);
+  await useProjectStore.getState().replaceProjects(backup.projects);
   for (const note of backup.notes) writeNoteContents(note.id, note.text);
   const current = usePreferencesStore.getState().prefs;
   await usePreferencesStore.getState().replace({
@@ -204,6 +209,7 @@ function buildBackup(): BackupFile {
     version: 1,
     exportedAt: new Date().toISOString(),
     tasks: useTaskStore.getState().tasks,
+    projects: useProjectStore.getState().projects,
     notes: readAllNotes(),
     preferences: usePreferencesStore.getState().prefs,
   };
@@ -221,11 +227,13 @@ function parseBackup(raw: string): BackupFile {
   if (record.app !== 'shughuli' || !Array.isArray(record.tasks)) {
     throw new Error('This file isn’t a Shughuli backup.');
   }
+  const tasks = record.tasks.map(normalizeTask);
   return {
     app: 'shughuli',
     version: 1,
     exportedAt: typeof record.exportedAt === 'string' ? record.exportedAt : new Date().toISOString(),
-    tasks: record.tasks.map(normalizeTask),
+    tasks,
+    projects: normalizeProjects(tasks, record.projects),
     notes: Array.isArray(record.notes)
       ? record.notes.flatMap((note) => {
           if (!note || typeof note !== 'object') return [];
@@ -236,6 +244,25 @@ function parseBackup(raw: string): BackupFile {
       : [],
     preferences: sanitizePreferences(record.preferences),
   };
+}
+
+function normalizeProjects(tasks: Task[], rawProjects: unknown) {
+  if (Array.isArray(rawProjects)) {
+    return rawProjects.flatMap((project, index) => {
+      if (!project || typeof project !== 'object') return [];
+      const item = project as Partial<Project>;
+      const name = typeof item.name === 'string' ? item.name.trim() : '';
+      if (!name) return [];
+      return [
+        {
+          id: typeof item.id === 'string' && item.id ? item.id : `project-${Date.now()}-${index}`,
+          name,
+          createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+        },
+      ];
+    });
+  }
+  return projectsFromNames(tasks.map((task) => task.project));
 }
 
 function normalizeTask(value: unknown): Task {

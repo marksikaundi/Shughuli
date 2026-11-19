@@ -10,18 +10,23 @@ import { Palette } from '@/constants/palette';
 import { syncAllTasks } from '@/lib/google-calendar';
 import { syncPlannedReminders } from '@/lib/planned-reminders';
 import { usePreferencesStore } from '@/store/preferences';
+import { useProjectStore } from '@/store/projects';
 import { useTaskStore } from '@/store/tasks';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const ready = useTaskStore((state) => state.ready);
+  const projectsReady = useProjectStore((state) => state.ready);
   const prefsReady = usePreferencesStore((state) => state.ready);
   const error = useTaskStore((state) => state.error);
   const reduceMotion = usePreferencesStore((state) => state.prefs.reduceMotion);
 
   useEffect(() => {
-    Promise.all([useTaskStore.getState().hydrate(), usePreferencesStore.getState().hydrate()])
+    Promise.all([
+      useTaskStore.getState().hydrate().then(() => useProjectStore.getState().hydrate()),
+      usePreferencesStore.getState().hydrate(),
+    ])
       .then(async () => {
         if (useTaskStore.getState().error) return;
         await useTaskStore.getState().syncReminders();
@@ -35,7 +40,7 @@ export default function RootLayout() {
 
   return (
     <View style={styles.root}>
-      {!ready || !prefsReady ? null : error ? (
+      {!ready || !projectsReady || !prefsReady ? null : error ? (
         <View style={styles.error}>
           <Text style={styles.errorTitle}>Couldn’t open your tasks</Text>
           <Text style={styles.errorBody}>{error}</Text>
@@ -52,6 +57,13 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen
               name="add-task"
+              options={{
+                presentation: 'modal',
+                animation: reduceMotion ? 'none' : 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="add-project"
               options={{
                 presentation: 'modal',
                 animation: reduceMotion ? 'none' : 'slide_from_bottom',

@@ -25,14 +25,26 @@ CREATE TABLE IF NOT EXISTS \`tasks\` (
 );
 `;
 
+const projects = `
+CREATE TABLE IF NOT EXISTS \`projects\` (
+  \`id\` text PRIMARY KEY NOT NULL,
+  \`name\` text NOT NULL,
+  \`created_at\` text NOT NULL
+);
+`;
+
 export async function migrateDb() {
   const db = await getDb();
   await migrate(db, {
     journal: {
-      entries: [{ idx: 0, when: 1, tag: '0000_init', breakpoints: true }],
+      entries: [
+        { idx: 0, when: 1, tag: '0000_init', breakpoints: true },
+        { idx: 1, when: 2, tag: '0001_projects', breakpoints: true },
+      ],
     },
     migrations: {
       m0000: init,
+      m0001: projects,
     },
   });
 }

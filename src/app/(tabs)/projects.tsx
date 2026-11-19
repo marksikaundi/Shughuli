@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/empty-state';
 import { Icon, IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
+import { useProjects } from '@/data/projects';
 import { useTasks } from '@/data/tasks';
 
 const TINTS = [Palette.lime, Palette.medium, '#C9B6F4'];
@@ -14,20 +15,23 @@ const TINTS = [Palette.lime, Palette.medium, '#C9B6F4'];
 export default function ProjectsScreen() {
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
+  const { projects: saved } = useProjects();
   const projects = useMemo(() => {
-    const names = [...new Set(tasks.map((task) => task.project.trim()).filter(Boolean))];
-    return names.map((name, index) => {
-      const items = tasks.filter((task) => task.project === name && task.kind === 'task');
+    return saved.map((project, index) => {
+      const items = tasks.filter(
+        (task) => task.kind === 'task' && task.project.trim().toLowerCase() === project.name.toLowerCase(),
+      );
       const done = items.filter((task) => task.status === 'done').length;
       return {
-        name,
+        id: project.id,
+        name: project.name,
         open: items.length - done,
         done,
         total: items.length,
         tint: TINTS[index % TINTS.length],
       };
     });
-  }, [tasks]);
+  }, [saved, tasks]);
 
   return (
     <Screen>
@@ -46,8 +50,8 @@ export default function ProjectsScreen() {
           <IconButton
             icon="plus"
             variant="dark"
-            accessibilityLabel="Add task"
-            onPress={() => router.push('/add-task')}
+            accessibilityLabel="Add project"
+            onPress={() => router.push('/add-project')}
           />
         </View>
 
@@ -55,9 +59,9 @@ export default function ProjectsScreen() {
           <EmptyState
             icon="folder"
             title="No projects yet"
-            body="Name a project when you add a task, and it will show up here."
-            actionLabel="Add a task"
-            onAction={() => router.push('/add-task')}
+            body="Create a project you’re working on. When you add a task, you can assign it to that project."
+            actionLabel="New project"
+            onAction={() => router.push('/add-project')}
             style={styles.empty}
           />
         ) : (
@@ -65,7 +69,7 @@ export default function ProjectsScreen() {
             {projects.map((project) => {
               const progress = project.total === 0 ? 0 : project.done / project.total;
               return (
-                <View key={project.name} style={styles.card}>
+                <View key={project.id} style={styles.card}>
                   <View style={styles.cardTop}>
                     <View style={[styles.swatch, { backgroundColor: project.tint }]}>
                       <Icon name="folder" size={16} color={Palette.ink} />
@@ -79,6 +83,14 @@ export default function ProjectsScreen() {
                   <Text style={styles.meta}>
                     {project.done} of {project.total} done
                   </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add task to ${project.name}`}
+                    onPress={() => router.push({ pathname: '/add-task', params: { project: project.name } })}
+                    style={({ pressed }) => [styles.addTask, pressed && styles.pressed]}>
+                    <Icon name="plus" size={14} color={Palette.ink} />
+                    <Text style={styles.addTaskText}>Add task</Text>
+                  </Pressable>
                 </View>
               );
             })}
@@ -159,5 +171,24 @@ const styles = StyleSheet.create({
     color: Palette.faint,
     fontSize: 12,
     fontWeight: 600,
+  },
+  addTask: {
+    marginTop: 14,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    backgroundColor: Palette.lime,
+  },
+  addTaskText: {
+    color: Palette.ink,
+    fontSize: 13,
+    fontWeight: 700,
+  },
+  pressed: {
+    opacity: 0.85,
   },
 });
