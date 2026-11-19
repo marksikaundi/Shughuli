@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DateCalendarPopup, TimePopup } from '@/components/due-pickers';
 import { Icon, IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
@@ -49,6 +51,7 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
   const duration = usePreferencesStore((state) => state.prefs.defaultDuration);
   const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
   const dateFormat = usePreferencesStore((state) => state.prefs.dateFormat);
+  const weekStartsOn = usePreferencesStore((state) => state.prefs.weekStartsOn);
   const editing = Boolean(task);
   const [title, setTitle] = useState(task?.title ?? '');
   const [description, setDescription] = useState(task?.description ?? '');
@@ -68,8 +71,9 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
   const [tagDraft, setTagDraft] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const date = task?.date ?? toDateKey(new Date());
-  const start = task?.start ?? planningStart;
+  const [date, setDate] = useState(task?.date ?? toDateKey(new Date()));
+  const [start, setStart] = useState(task?.start ?? planningStart);
+  const [scheduleOpen, setScheduleOpen] = useState<'date' | 'time' | null>(null);
 
   const dueLabel = dueDateLabel(date, dateFormat);
 
@@ -192,19 +196,33 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
 
           <Field label="Due Date & time">
             <View style={styles.dueRow}>
-              <View style={[styles.input, styles.dueField]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Choose due date"
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setScheduleOpen('date');
+                }}
+                style={({ pressed }) => [styles.input, styles.dueField, pressed && styles.pressed]}>
                 <Icon name="calendar" size={16} color={Palette.ink} />
                 <Text style={styles.dueText} numberOfLines={1}>
                   {dueLabel}
                 </Text>
-              </View>
-              <View style={[styles.input, styles.timeField]}>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Choose time"
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setScheduleOpen('time');
+                }}
+                style={({ pressed }) => [styles.input, styles.timeField, pressed && styles.pressed]}>
                 <Icon name="clock" size={16} color={Palette.ink} />
-                <Text style={styles.dueText}>
+                <Text style={styles.dueText} numberOfLines={1}>
                   {formatClock(start, timeFormat)}
                   {editing ? '' : ` · ${duration} min`}
                 </Text>
-              </View>
+              </Pressable>
             </View>
           </Field>
 
@@ -310,6 +328,20 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
+      <DateCalendarPopup
+        visible={scheduleOpen === 'date'}
+        value={date}
+        weekStartsOn={weekStartsOn}
+        onClose={() => setScheduleOpen(null)}
+        onSelect={setDate}
+      />
+      <TimePopup
+        visible={scheduleOpen === 'time'}
+        value={start}
+        timeFormat={timeFormat}
+        onClose={() => setScheduleOpen(null)}
+        onSelect={setStart}
+      />
     </Screen>
   );
 }
