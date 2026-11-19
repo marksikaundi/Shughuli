@@ -30,7 +30,7 @@ import {
 import { usePreferencesStore } from '@/store/preferences';
 import { useTaskStore } from '@/store/tasks';
 
-type Filter = 'all' | TaskCategory;
+type Filter = 'all' | TaskCategory | 'todo';
 
 export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
@@ -39,7 +39,6 @@ export default function CalendarScreen() {
   const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
   const [selected, setSelected] = useState(() => new Date());
   const [filter, setFilter] = useState<Filter>('all');
-  const [starredOnly, setStarredOnly] = useState(false);
   const [googleAccount, setGoogleAccount] = useState<string | null>(null);
   const [googleItems, setGoogleItems] = useState<GoogleScheduleItem[]>([]);
   const [connecting, setConnecting] = useState(false);
@@ -78,19 +77,22 @@ export default function CalendarScreen() {
   const events = useMemo(() => {
     return tasks
       .filter((task) => task.scheduled && task.date === selectedKey)
-      .filter((task) => (filter === 'all' ? true : task.category === filter))
-      .filter((task) => (starredOnly ? task.starred : true))
+      .filter((task) => {
+        if (filter === 'all') return true;
+        if (filter === 'todo') return task.status === 'todo';
+        return task.category === filter;
+      })
       .sort((a, b) => a.start.localeCompare(b.start));
-  }, [filter, selectedKey, starredOnly, tasks]);
+  }, [filter, selectedKey, tasks]);
 
   const rows = useMemo(() => {
     const local = events.map((task) => ({ kind: 'task' as const, id: task.id, start: task.start, task }));
     const remote =
-      filter === 'all' && !starredOnly
+      filter === 'all'
         ? googleItems.map((item) => ({ kind: 'google' as const, id: item.id, start: item.start, item }))
         : [];
     return [...local, ...remote].sort((a, b) => a.start.localeCompare(b.start) || a.id.localeCompare(b.id));
-  }, [events, filter, googleItems, starredOnly]);
+  }, [events, filter, googleItems]);
 
   const groups = ['Morning', 'Afternoon', 'Evening']
     .map((label) => ({
@@ -189,11 +191,8 @@ export default function CalendarScreen() {
           })}
         </View>
 
-        <View style={styles.filters}>
-          <FilterPill label="All" icon={null} selected={filter === 'all' && !starredOnly} onPress={() => {
-            setFilter('all');
-            setStarredOnly(false);
-          }} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+          <FilterPill label="All" icon={null} selected={filter === 'all'} onPress={() => setFilter('all')} />
           <FilterPill
             label="Work"
             icon="briefcase"
@@ -206,13 +205,13 @@ export default function CalendarScreen() {
             selected={filter === 'personal'}
             onPress={() => setFilter('personal')}
           />
-          <Pressable
-            accessibilityLabel="Starred tasks"
-            onPress={() => setStarredOnly((value) => !value)}
-            style={[styles.star, starredOnly && styles.starActive]}>
-            <Icon name={starredOnly ? 'starFill' : 'star'} size={16} color={starredOnly ? Palette.white : Palette.ink} />
-          </Pressable>
-        </View>
+          <FilterPill
+            label="Todo"
+            icon="check"
+            selected={filter === 'todo'}
+            onPress={() => setFilter('todo')}
+          />
+        </ScrollView>
 
         {groups.length === 0 ? (
           <EmptyState
@@ -323,7 +322,7 @@ function FilterPill({
   onPress,
 }: {
   label: string;
-  icon: 'briefcase' | 'person' | null;
+  icon: 'briefcase' | 'person' | 'check' | null;
   selected: boolean;
   onPress: () => void;
 }) {
@@ -515,20 +514,6 @@ const styles = StyleSheet.create({
   },
   pillTextSelected: {
     color: Palette.white,
-  },
-  star: {
-    marginLeft: 'auto',
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: Palette.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...cardShadow,
-    shadowOpacity: 0.05,
-  },
-  starActive: {
-    backgroundColor: Palette.ink,
   },
   group: {
     marginTop: 22,
