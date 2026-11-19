@@ -11,7 +11,7 @@ import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { useProjects } from '@/data/projects';
 import { useTasks, type Task } from '@/data/tasks';
 
-const TINTS = [Palette.lime, Palette.medium, '#C9B6F4', Palette.low];
+const TINTS = [Palette.lime, Palette.blue, '#C9B6F4', Palette.high];
 
 type Board = 'all' | 'active' | 'done';
 
