@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
+import { I18nManager, Platform, Settings } from 'react-native';
 
 export type DeviceLocale = {
   languageTag: string;
@@ -66,20 +66,21 @@ function loadExpoLocales() {
   }
 }
 
+function pushTag(tags: string[], value: unknown) {
+  if (typeof value === 'string' && value) tags.push(value);
+}
+
 function systemTags() {
   const tags: string[] = [];
   if (Platform.OS === 'ios') {
-    const settings = NativeModules.SettingsManager?.settings as { AppleLocale?: string; AppleLanguages?: string[] } | undefined;
-    if (typeof settings?.AppleLocale === 'string') tags.push(settings.AppleLocale);
-    if (Array.isArray(settings?.AppleLanguages)) {
-      for (const language of settings.AppleLanguages) {
-        if (typeof language === 'string') tags.push(language);
-      }
+    pushTag(tags, Settings.get('AppleLocale'));
+    const languages = Settings.get('AppleLanguages');
+    if (Array.isArray(languages)) {
+      for (const language of languages) pushTag(tags, language);
     }
-  } else if (Platform.OS === 'android') {
-    const identifier = NativeModules.I18nManager?.localeIdentifier;
-    if (typeof identifier === 'string' && identifier) tags.push(identifier);
   }
+
+  pushTag(tags, (I18nManager.getConstants() as { localeIdentifier?: string }).localeIdentifier);
 
   if (tags.length === 0 && typeof navigator !== 'undefined') {
     const languages = navigator.languages?.length ? navigator.languages : [navigator.language];
