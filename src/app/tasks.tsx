@@ -1,60 +1,34 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/empty-state';
-import { IconButton } from '@/components/icon';
+import { Icon, IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
-import { TaskCard } from '@/components/task-card';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
-import { formatDate, toDateKey, useTasks, type Task, type TaskStatus } from '@/data/tasks';
-import { useCopy } from '@/lib/settings-copy';
+import { formatClock, formatDate, toDateKey, useTasks, type Task } from '@/data/tasks';
+import { fill, useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
-
-const FILTERS: (TaskStatus | 'all')[] = ['all', 'todo', 'in_progress', 'in_review', 'done'];
 
 export default function TasksScreen() {
   const text = useCopy();
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
   const visibility = usePreferencesStore((state) => state.prefs.completedVisibility);
-  const [filter, setFilter] = useState<TaskStatus | 'all'>('all');
-  const filters = visibility === 'hide' ? FILTERS.filter((item) => item !== 'done') : FILTERS;
-  const statusLabel: Record<TaskStatus | 'all', string> = {
-    all: text.all,
-    todo: text.todo,
-    in_progress: text.inProgress,
-    in_review: text.inReview,
-    done: text.done,
-  };
-  const activeFilter = visibility === 'hide' && filter === 'done' ? 'all' : filter;
+  const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
 
-  const groups = useMemo(() => {
+  const items = useMemo(() => {
     const today = toDateKey(new Date());
-    const visible = tasks.filter((task) => {
-      if (visibility === 'hide' && task.status === 'done') return false;
-      if (activeFilter !== 'all' && task.status !== activeFilter) return false;
-      return true;
-    });
-    const byDate = new Map<string, Task[]>();
-    for (const task of visible) {
-      const bucket = byDate.get(task.date) ?? [];
-      bucket.push(task);
-      byDate.set(task.date, bucket);
-    }
-    return [...byDate.entries()]
-      .sort(([a], [b]) => {
-        const rank = dateRank(a, today) - dateRank(b, today);
+    return tasks
+      .filter((task) => visibility !== 'hide' || task.status !== 'done')
+      .sort((a, b) => {
+        const rank = dateRank(a.date, today) - dateRank(b.date, today);
         if (rank !== 0) return rank;
-        return a < today ? b.localeCompare(a) : a.localeCompare(b);
-      })
-      .map(([date, items]) => ({
-        date,
-        label: dateLabel(date, today, text),
-        items: items.sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title)),
-      }));
-  }, [activeFilter, tasks, text, visibility]);
+        const byDate = a.date < today ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date);
+        return byDate || a.start.localeCompare(b.start) || a.title.localeCompare(b.title);
+      });
+  }, [tasks, visibility]);
 
   return (
     <Screen>
@@ -67,35 +41,13 @@ export default function TasksScreen() {
         }}>
         <View style={styles.header}>
           <IconButton icon="back" accessibilityLabel={text.back} onPress={() => router.back()} />
-          <IconButton
-            icon="plus"
-            variant="dark"
-            accessibilityLabel={text.addTask}
-            onPress={() => router.push('/add-task')}
-          />
+          <IconButton icon="bell" accessibilityLabel={text.settings} onPress={() => router.push('/settings')} />
+          <View pointerEvents="none" style={styles.headerTitleWrap}>
+            <Text style={styles.headerTitle}>{text.tasks}</Text>
+          </View>
         </View>
-        <Text style={styles.title}>{text.tasks}</Text>
-        <Text style={styles.lead}>{text.tasksLead}</Text>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filters}
-          style={styles.filterScroll}>
-          {filters.map((item) => {
-            const selected = activeFilter === item;
-            return (
-              <Pressable
-                key={item}
-                onPress={() => setFilter(item)}
-                style={[styles.chip, selected && styles.chipSelected]}>
-                <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{statusLabel[item]}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        {groups.length === 0 ? (
+        {items.length === 0 ? (
           <EmptyState
             title={text.noTasksYet}
             body={text.noTasksBody}
@@ -104,16 +56,11 @@ export default function TasksScreen() {
             style={styles.empty}
           />
         ) : (
-          groups.map((group) => (
-            <View key={group.date} style={styles.group}>
-              <Text style={styles.groupLabel}>{group.label}</Text>
-              <View style={styles.list}>
-                {group.items.map((task) => (
-                  <TaskCard key={task.id} task={task} />
-                ))}
-              </View>
-            </View>
-          ))
+          <View style={styles.list}>
+            {items.map((task) => (
+              <TaskRow key={task.id} task={task} today={toDateKey(new Date())} timeFormat={timeFormat} text={text} />
+            ))}
+          </View>
         )}
       </ScrollView>
     </Screen>
@@ -124,6 +71,47 @@ function dateRank(date: string, today: string) {
   if (date === today) return 0;
   if (date > today) return 1;
   return 2;
+}
+
+function TaskRow({
+  task,
+  today,
+  timeFormat,
+  text,
+}: {
+  task: Task;
+  today: string;
+  timeFormat: '12' | '24';
+  text: ReturnType<typeof useCopy>;
+}) {
+  const kind = task.kind === 'meeting' ? text.meet : task.category === 'personal' ? text.categoryPersonal : text.work;
+  const detail = [task.project.trim(), dateLabel(task.date, today, text), formatClock(task.start, timeFormat)]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={fill(text.editNamed, { name: task.title })}
+      onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
+      style={({ pressed }) => [styles.card, task.status === 'done' && styles.cardDone, pressed && styles.pressed]}>
+      <View style={styles.cardCopy}>
+        <View style={styles.kindRow}>
+          <Icon name={task.kind === 'meeting' ? 'video' : 'check'} size={14} color={Palette.muted} />
+          <Text style={styles.kind}>{kind}</Text>
+        </View>
+        <Text style={styles.cardTitle} numberOfLines={2}>
+          {task.title}
+        </Text>
+        <Text style={styles.cardDetail} numberOfLines={1}>
+          {detail}
+        </Text>
+      </View>
+      <View style={styles.arrow}>
+        <Icon name="arrow" size={16} color={Palette.white} />
+      </View>
+    </Pressable>
+  );
 }
 
 function dateLabel(date: string, today: string, text: ReturnType<typeof useCopy>) {
@@ -140,66 +128,74 @@ function dateLabel(date: string, today: string, text: ReturnType<typeof useCopy>
 
 const styles = StyleSheet.create({
   header: {
+    minHeight: 42,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  title: {
-    marginTop: 22,
+  headerTitleWrap: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
     color: Palette.ink,
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: 17,
     fontWeight: 700,
-    letterSpacing: -0.8,
-  },
-  lead: {
-    marginTop: 8,
-    color: Palette.muted,
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: 500,
-  },
-  filterScroll: {
-    marginTop: 18,
-    marginHorizontal: -Layout.padding,
-  },
-  filters: {
-    paddingHorizontal: Layout.padding,
-    gap: 10,
-  },
-  chip: {
-    backgroundColor: Palette.white,
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    ...cardShadow,
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-  },
-  chipSelected: {
-    backgroundColor: Palette.ink,
-  },
-  chipLabel: {
-    color: Palette.ink,
-    fontSize: 14,
-    fontWeight: 600,
-  },
-  chipLabelSelected: {
-    color: Palette.white,
   },
   empty: {
-    marginTop: 22,
-  },
-  group: {
-    marginTop: 22,
-  },
-  groupLabel: {
-    color: Palette.ink,
-    fontSize: 16,
-    fontWeight: 700,
-    marginBottom: 12,
+    marginTop: 28,
   },
   list: {
+    marginTop: 22,
     gap: 12,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Palette.white,
+    borderRadius: 24,
+    padding: 16,
+    ...cardShadow,
+  },
+  cardDone: {
+    opacity: 0.55,
+  },
+  cardCopy: {
+    flex: 1,
+    gap: 6,
+  },
+  kindRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  kind: {
+    color: Palette.muted,
+    fontSize: 13,
+    fontWeight: 600,
+  },
+  cardTitle: {
+    color: Palette.ink,
+    fontSize: 18,
+    fontWeight: 700,
+    letterSpacing: -0.3,
+  },
+  cardDetail: {
+    color: Palette.muted,
+    fontSize: 13,
+    fontWeight: 500,
+  },
+  arrow: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: Palette.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.82,
   },
 });

@@ -8,15 +8,13 @@ import { EmptyState } from '@/components/empty-state';
 import { Icon, IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
+import { accentById } from '@/data/preferences';
 import {
   formatClock,
-  periodOf,
-  splitClock,
   startOfWeek,
   toDateKey,
   useTasks,
   type Task,
-  type TaskCategory,
 } from '@/data/tasks';
 import {
   calendarAccessGranted,
@@ -27,12 +25,14 @@ import {
   syncAllTasks,
   type GoogleScheduleItem,
 } from '@/lib/google-calendar';
-import { formatScheduleDay, formatWeekday } from '@/i18n/format';
+import { formatWeekday } from '@/i18n/format';
 import { fill, getCopy, useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 import { useTaskStore } from '@/store/tasks';
 
-type Filter = 'all' | TaskCategory | 'todo';
+type ScheduleRow =
+  | { kind: 'task'; id: string; start: string; task: Task }
+  | { kind: 'google'; id: string; start: string; item: GoogleScheduleItem };
 
 export default function CalendarScreen() {
   const text = useCopy();
@@ -40,8 +40,8 @@ export default function CalendarScreen() {
   const { tasks } = useTasks();
   const weekStartsOn = usePreferencesStore((state) => state.prefs.weekStartsOn);
   const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
+  const accent = accentById(usePreferencesStore((state) => state.prefs.accent)).color;
   const [selected, setSelected] = useState(() => new Date());
-  const [filter, setFilter] = useState<Filter>('all');
   const [googleAccount, setGoogleAccount] = useState<string | null>(null);
   const [googleItems, setGoogleItems] = useState<GoogleScheduleItem[]>([]);
   const [connecting, setConnecting] = useState(false);
@@ -77,37 +77,14 @@ export default function CalendarScreen() {
   );
 
   const selectedKey = toDateKey(selected);
-  const events = useMemo(() => {
-    return tasks
-      .filter((task) => task.scheduled && task.date === selectedKey)
-      .filter((task) => {
-        if (filter === 'all') return true;
-        if (filter === 'todo') return task.status === 'todo';
-        return task.category === filter;
-      })
-      .sort((a, b) => a.start.localeCompare(b.start));
-  }, [filter, selectedKey, tasks]);
-
   const rows = useMemo(() => {
-    const local = events.map((task) => ({ kind: 'task' as const, id: task.id, start: task.start, task }));
-    const remote =
-      filter === 'all'
-        ? googleItems.map((item) => ({ kind: 'google' as const, id: item.id, start: item.start, item }))
-        : [];
+    const local: ScheduleRow[] = tasks
+      .filter((task) => task.scheduled && task.date === selectedKey)
+      .map((task) => ({ kind: 'task', id: task.id, start: task.start, task }));
+    const remote: ScheduleRow[] = googleItems.map((item) => ({ kind: 'google', id: item.id, start: item.start, item }));
     return [...local, ...remote].sort((a, b) => a.start.localeCompare(b.start) || a.id.localeCompare(b.id));
-  }, [events, filter, googleItems]);
-
-  const periods = [
-    { id: 'Morning' as const, label: text.morning },
-    { id: 'Afternoon' as const, label: text.afternoon },
-    { id: 'Evening' as const, label: text.evening },
-  ];
-  const groups = periods
-    .map((period) => ({
-      ...period,
-      items: rows.filter((row) => periodOf(row.start) === period.id),
-    }))
-    .filter((group) => group.items.length > 0);
+  }, [googleItems, selectedKey, tasks]);
+  const timeline = useMemo(() => buildTimeline(rows), [rows]);
 
   async function connectCalendar() {
     if (connecting) return;
@@ -134,9 +111,6 @@ export default function CalendarScreen() {
     }
   }
 
-  const headerDate = formatScheduleDay(selected);
-  const showingToday = selectedKey === toDateKey(new Date());
-
   return (
     <Screen>
       <ScrollView
@@ -150,12 +124,6 @@ export default function CalendarScreen() {
         <View style={styles.header}>
           <IconButton icon="back" accessibilityLabel={text.backHome} onPress={() => router.navigate('/')} />
           <View style={styles.headerActions}>
-            <IconButton
-              icon="plus"
-              variant="dark"
-              accessibilityLabel={text.addTask}
-              onPress={() => router.push('/add-task')}
-            />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={googleAccount ? fill(text.syncGoogle, { account: googleAccount }) : text.connectGoogle}
@@ -166,15 +134,7 @@ export default function CalendarScreen() {
             </Pressable>
           </View>
           <View pointerEvents="none" style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>{headerDate}</Text>
-          </View>
-        </View>
-
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>{text.taskSchedule}</Text>
-          <View style={styles.calendarPill}>
-            <Icon name="calendar" size={16} color={Palette.ink} />
-            <Text style={styles.calendarPillText}>{text.tabCalendar}</Text>
+            <Text style={styles.headerTitle}>{text.taskSchedule.replace(/\n/g, ' ')}</Text>
           </View>
         </View>
 
@@ -184,10 +144,8 @@ export default function CalendarScreen() {
             const active = key === selectedKey;
             return (
               <Pressable key={key} onPress={() => setSelected(date)} style={styles.day}>
-                <Text style={[styles.dayName, active && styles.dayNameActive]}>
-                  {formatWeekday(date)}
-                </Text>
                 <View style={[styles.dayNumber, active && styles.dayNumberActive]}>
+                  <Text style={[styles.dayName, active && styles.dayNameActive]}>{formatWeekday(date)}</Text>
                   <Text style={[styles.dayNumberText, active && styles.dayNumberTextActive]}>{date.getDate()}</Text>
                 </View>
               </Pressable>
@@ -195,29 +153,7 @@ export default function CalendarScreen() {
           })}
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-          <FilterPill label={text.all} icon={null} selected={filter === 'all'} onPress={() => setFilter('all')} />
-          <FilterPill
-            label={text.work}
-            icon="briefcase"
-            selected={filter === 'work'}
-            onPress={() => setFilter('work')}
-          />
-          <FilterPill
-            label={text.categoryPersonal}
-            icon="person"
-            selected={filter === 'personal'}
-            onPress={() => setFilter('personal')}
-          />
-          <FilterPill
-            label={text.todo}
-            icon="check"
-            selected={filter === 'todo'}
-            onPress={() => setFilter('todo')}
-          />
-        </ScrollView>
-
-        {groups.length === 0 ? (
+        {timeline.length === 0 ? (
           <EmptyState
             icon="calendar"
             title={text.nothingScheduledTitle}
@@ -227,24 +163,43 @@ export default function CalendarScreen() {
             style={styles.empty}
           />
         ) : (
-          groups.map((group, groupIndex) => (
-            <View key={group.id} style={styles.group}>
-              <View style={styles.groupHeader}>
-                <View style={styles.groupTitle}>
-                  <Icon name={group.id === 'Evening' ? 'moon' : 'sun'} size={16} color={Palette.ink} />
-                  <Text style={styles.groupLabel}>{group.label}</Text>
+          <View style={styles.timeline}>
+            {timeline.map((slot) => (
+              <View key={slot.hour} style={styles.slot}>
+                <Text style={styles.slotTime}>{formatClock(`${String(slot.hour).padStart(2, '0')}:00`, timeFormat)}</Text>
+                <View style={styles.slotBody}>
+                  {slot.create ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={text.addNewTask}
+                      onPress={() => router.push('/add-task')}
+                      style={({ pressed }) => [styles.create, pressed && styles.pressed]}>
+                      <Text style={styles.createText}>{text.addNewTask}</Text>
+                      <Icon name="plus" size={18} color={Palette.ink} />
+                    </Pressable>
+                  ) : slot.items.length === 0 ? (
+                    <View style={styles.slotLine} />
+                  ) : (
+                    slot.items.map((row) =>
+                      row.kind === 'task' ? (
+                        <ScheduleBlock key={row.id} task={row.task} accent={accent} timeFormat={timeFormat} text={text} />
+                      ) : (
+                        <ScheduleBlock
+                          key={row.id}
+                          accent={accent}
+                          timeFormat={timeFormat}
+                          text={text}
+                          title={row.item.title}
+                          start={row.item.start}
+                          meta={text.googleCalendar}
+                        />
+                      ),
+                    )
+                  )}
                 </View>
-                {groupIndex === 0 ? <Text style={styles.today}>{showingToday ? text.today : headerDate}</Text> : null}
               </View>
-              {group.items.map((row, index) =>
-                row.kind === 'task' ? (
-                  <ScheduleCard key={row.id} task={row.task} last={index === group.items.length - 1} timeFormat={timeFormat} text={text} />
-                ) : (
-                  <GoogleCard key={row.id} item={row.item} last={index === group.items.length - 1} timeFormat={timeFormat} />
-                ),
-              )}
-            </View>
-          ))
+            ))}
+          </View>
         )}
       </ScrollView>
     </Screen>
@@ -264,37 +219,6 @@ function confirmCalendarAccess() {
       { cancelable: true, onDismiss: () => resolve(false) },
     );
   });
-}
-
-function GoogleCard({ item, last, timeFormat }: { item: GoogleScheduleItem; last: boolean; timeFormat: '12' | '24' }) {
-  const clock = splitClock(item.start, timeFormat);
-
-  return (
-    <View style={styles.event}>
-      <View style={styles.timeCol}>
-        <Text style={styles.timeHour}>{clock.time}</Text>
-        {clock.suffix ? <Text style={styles.timeSuffix}>{clock.suffix}</Text> : null}
-      </View>
-      <View style={styles.rail}>
-        <View style={styles.railDot} />
-        {last ? null : <View style={styles.railLine} />}
-      </View>
-      <View style={styles.eventCard}>
-        <Text style={styles.eventTitle}>{item.title}</Text>
-        <View style={styles.rangeRow}>
-          <Icon name="clock" size={13} color={Palette.muted} />
-          <Text style={styles.range}>
-            {formatClock(item.start, timeFormat)} - {formatClock(item.end, timeFormat)}
-          </Text>
-        </View>
-        <View style={styles.eventFooter}>
-          <View style={styles.statusPill}>
-            <Text style={styles.statusText}>Google</Text>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
 }
 
 function GoogleMark() {
@@ -320,79 +244,97 @@ function GoogleMark() {
   );
 }
 
-function FilterPill({
-  label,
-  icon,
-  selected,
-  onPress,
+function ScheduleBlock({
+  task,
+  title,
+  start,
+  meta,
+  accent,
+  timeFormat,
+  text,
 }: {
-  label: string;
-  icon: 'briefcase' | 'person' | 'check' | null;
-  selected: boolean;
-  onPress: () => void;
+  task?: Task;
+  title?: string;
+  start?: string;
+  meta?: string;
+  accent: string;
+  timeFormat: '12' | '24';
+  text: ReturnType<typeof useCopy>;
 }) {
+  const name = task?.title ?? title ?? '';
+  const clock = task?.start ?? start ?? '';
+  const detail =
+    meta ??
+    [
+      task?.project.trim(),
+      task?.kind === 'meeting' ? text.meet : task?.category === 'personal' ? text.categoryPersonal : text.work,
+      task ? durationLabel(task.start, task.end, text.minutes) : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+
+  const body = (
+    <>
+      <View style={[styles.blockBar, { backgroundColor: accent }]} />
+      <View style={styles.blockCopy}>
+        <Text style={styles.blockTime}>{formatClock(clock, timeFormat)}</Text>
+        <Text style={styles.blockTitle} numberOfLines={2}>
+          {name}
+        </Text>
+        {detail ? (
+          <Text style={styles.blockMeta} numberOfLines={1}>
+            {detail}
+          </Text>
+        ) : null}
+      </View>
+    </>
+  );
+
+  if (!task) return <View style={styles.block}>{body}</View>;
+
   return (
-    <Pressable onPress={onPress} style={[styles.pill, selected && styles.pillSelected]}>
-      {icon ? <Icon name={icon} size={14} color={selected ? Palette.white : Palette.ink} /> : null}
-      <Text style={[styles.pillText, selected && styles.pillTextSelected]}>{label}</Text>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={fill(text.editNamed, { name })}
+      onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
+      style={({ pressed }) => [styles.block, pressed && styles.pressed]}>
+      {body}
     </Pressable>
   );
 }
 
-function ScheduleCard({
-  task,
-  last,
-  timeFormat,
-  text,
-}: {
-  task: Task;
-  last: boolean;
-  timeFormat: '12' | '24';
-  text: ReturnType<typeof useCopy>;
-}) {
-  const clock = splitClock(task.start, timeFormat);
+function buildTimeline(rows: ScheduleRow[]) {
+  if (rows.length === 0) return [];
+  const byHour = new Map<number, ScheduleRow[]>();
+  for (const row of rows) {
+    const hour = Number(row.start.slice(0, 2));
+    const items = byHour.get(hour) ?? [];
+    items.push(row);
+    byHour.set(hour, items);
+  }
+  const hours = [...byHour.keys()];
+  const first = Math.min(...hours);
+  const last = Math.max(...hours);
+  let createAt = last < 23 ? last + 1 : first;
+  for (let hour = first; hour <= last; hour += 1) {
+    if (!byHour.has(hour)) {
+      createAt = hour;
+      break;
+    }
+  }
+  const slots = [];
+  for (let hour = first; hour <= Math.max(last, createAt); hour += 1) {
+    const items = byHour.get(hour) ?? [];
+    slots.push({ hour, items, create: hour === createAt && items.length === 0 });
+  }
+  return slots;
+}
 
-  return (
-    <View style={styles.event}>
-      <View style={styles.timeCol}>
-        <Text style={styles.timeHour}>{clock.time}</Text>
-        {clock.suffix ? <Text style={styles.timeSuffix}>{clock.suffix}</Text> : null}
-      </View>
-      <View style={styles.rail}>
-        <View style={styles.railDot} />
-        {last ? null : <View style={styles.railLine} />}
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={fill(text.editNamed, { name: task.title })}
-        onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
-        style={styles.eventCard}>
-        <Text style={styles.eventTitle}>{task.title}</Text>
-        {task.kind === 'meeting' ? (
-          <Text style={styles.eventBody}>{task.description}</Text>
-        ) : (
-          <View style={styles.rangeRow}>
-            <Icon name="clock" size={13} color={Palette.muted} />
-            <Text style={styles.range}>
-              {formatClock(task.start, timeFormat)} - {formatClock(task.end, timeFormat)}
-            </Text>
-          </View>
-        )}
-        <View style={styles.eventFooter}>
-          {task.kind === 'meeting' ? (
-            <View style={styles.meet}>
-              <Icon name="video" size={13} color={Palette.white} />
-              <Text style={styles.meetText}>{text.meet}</Text>
-            </View>
-          ) : (
-            <View style={styles.statusPill}>
-              <Text style={styles.statusText}>{task.status === 'in_progress' ? text.inProgress : text.scheduled}</Text>
-            </View>
-          )}
-        </View>
-      </Pressable>
-    </View>
-  );
+function durationLabel(start: string, end: string, minutes: string) {
+  const [startHour, startMinute] = start.split(':').map(Number);
+  const [endHour, endMinute] = end.split(':').map(Number);
+  const span = endHour * 60 + endMinute - (startHour * 60 + startMinute);
+  return span > 0 ? `${span} ${minutes}` : '';
 }
 
 const styles = StyleSheet.create({
@@ -435,36 +377,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 700,
   },
-  titleRow: {
-    marginTop: 26,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-  title: {
-    color: Palette.ink,
-    fontSize: 34,
-    lineHeight: 38,
-    fontWeight: 700,
-    letterSpacing: -0.8,
-  },
-  calendarPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Palette.white,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 6,
-    ...cardShadow,
-    shadowOpacity: 0.05,
-  },
-  calendarPillText: {
-    color: Palette.ink,
-    fontSize: 13,
-    fontWeight: 600,
-  },
   week: {
     marginTop: 22,
     flexDirection: 'row',
@@ -472,26 +384,30 @@ const styles = StyleSheet.create({
   },
   day: {
     alignItems: 'center',
-    gap: 8,
     flex: 1,
   },
-  dayName: {
-    color: Palette.muted,
-    fontSize: 12,
-    fontWeight: 600,
-  },
-  dayNameActive: {
-    color: Palette.ink,
-  },
   dayNumber: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 46,
+    height: 58,
+    borderRadius: 23,
+    borderWidth: 1,
+    borderColor: '#E4E0E8',
+    backgroundColor: Palette.white,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 2,
   },
   dayNumberActive: {
     backgroundColor: Palette.ink,
+    borderColor: Palette.ink,
+  },
+  dayName: {
+    color: Palette.muted,
+    fontSize: 11,
+    fontWeight: 600,
+  },
+  dayNameActive: {
+    color: 'rgba(255,255,255,0.72)',
   },
   dayNumberText: {
     color: Palette.ink,
@@ -501,156 +417,81 @@ const styles = StyleSheet.create({
   dayNumberTextActive: {
     color: Palette.white,
   },
-  filters: {
-    marginTop: 20,
+  timeline: {
+    marginTop: 26,
+    gap: 16,
+  },
+  slot: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  slotTime: {
+    width: 68,
+    paddingTop: 14,
+    color: Palette.muted,
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  slotBody: {
+    flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
     gap: 8,
   },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Palette.white,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    height: 38,
-    ...cardShadow,
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+  slotLine: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#DDD8E2',
+    marginTop: 20,
   },
-  pillSelected: {
-    backgroundColor: Palette.ink,
-  },
-  pillText: {
-    color: Palette.ink,
-    fontSize: 14,
-    fontWeight: 600,
-  },
-  pillTextSelected: {
-    color: Palette.white,
-  },
-  group: {
-    marginTop: 22,
-  },
-  groupHeader: {
+  create: {
+    minHeight: 52,
+    borderRadius: 16,
+    backgroundColor: '#F1F1F4',
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
   },
-  groupTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  groupLabel: {
+  createText: {
     color: Palette.ink,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 700,
   },
-  today: {
-    color: Palette.muted,
-    fontSize: 13,
-    fontWeight: 600,
-  },
-  event: {
+  block: {
     flexDirection: 'row',
     alignItems: 'stretch',
+    backgroundColor: Palette.ink,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
-  timeCol: {
-    width: 48,
-    alignItems: 'flex-end',
-    paddingTop: 14,
+  blockBar: {
+    width: 4,
   },
-  timeHour: {
-    color: Palette.ink,
-    fontSize: 13,
+  blockCopy: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 2,
+  },
+  blockTime: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 12,
     fontWeight: 700,
   },
-  timeSuffix: {
-    color: Palette.muted,
-    fontSize: 11,
-    fontWeight: 600,
-  },
-  rail: {
-    width: 22,
-    alignItems: 'center',
-  },
-  railDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Palette.ink,
-    marginTop: 18,
-  },
-  railLine: {
-    width: 1.5,
-    flex: 1,
-    backgroundColor: '#DDD8E2',
-    marginTop: 4,
-  },
-  eventCard: {
-    flex: 1,
-    backgroundColor: Palette.white,
-    borderRadius: 22,
-    padding: 14,
-    marginBottom: 12,
-    ...cardShadow,
-  },
-  eventTitle: {
-    color: Palette.ink,
+  blockTitle: {
+    color: Palette.white,
     fontSize: 16,
     fontWeight: 700,
     letterSpacing: -0.2,
   },
-  eventBody: {
-    marginTop: 6,
-    color: Palette.muted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  rangeRow: {
-    marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  range: {
-    color: Palette.muted,
+  blockMeta: {
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 12,
-    fontWeight: 500,
+    fontWeight: 600,
   },
-  eventFooter: {
-    marginTop: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  meet: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: Palette.blue,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  meetText: {
-    color: Palette.white,
-    fontSize: 13,
-    fontWeight: 700,
-  },
-  statusPill: {
-    backgroundColor: Palette.review,
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  statusText: {
-    color: Palette.reviewText,
-    fontSize: 12,
-    fontWeight: 700,
+  pressed: {
+    opacity: 0.82,
   },
   empty: {
     marginTop: 24,
