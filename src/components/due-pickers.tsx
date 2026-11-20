@@ -4,7 +4,9 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewIn
 import { Icon } from '@/components/icon';
 import { Palette, cardShadow } from '@/constants/palette';
 import { startOfWeek, toDateKey } from '@/data/model';
+import { formatAccessibleDate, formatMonthYear, formatWeekday } from '@/i18n/format';
 import type { TimeFormat, WeekStart } from '@/lib/runtime-prefs';
+import { useCopy } from '@/lib/settings-copy';
 
 const SLOT = 44;
 
@@ -45,10 +47,11 @@ function CalendarBody({
   onClose: () => void;
   onSelect: (value: string) => void;
 }) {
+  const text = useCopy();
   const selected = keyToDate(value);
   const [cursor, setCursor] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
   const todayKey = toDateKey(new Date());
-  const monthLabel = cursor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthLabel = formatMonthYear(cursor);
   const weekdays = weekdayLabels(weekStartsOn);
   const days = monthDays(cursor, weekStartsOn);
 
@@ -59,11 +62,11 @@ function CalendarBody({
   return (
     <>
       <View style={styles.calendarHeader}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Previous month" hitSlop={8} onPress={() => shiftMonth(-1)} style={styles.nav}>
+        <Pressable accessibilityRole="button" accessibilityLabel={text.previousMonth} hitSlop={8} onPress={() => shiftMonth(-1)} style={styles.nav}>
           <Icon name="back" size={18} color={Palette.ink} />
         </Pressable>
         <Text style={styles.month}>{monthLabel}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Next month" hitSlop={8} onPress={() => shiftMonth(1)} style={styles.nav}>
+        <Pressable accessibilityRole="button" accessibilityLabel={text.nextMonth} hitSlop={8} onPress={() => shiftMonth(1)} style={styles.nav}>
           <Icon name="chevron" size={18} color={Palette.ink} />
         </Pressable>
       </View>
@@ -84,7 +87,7 @@ function CalendarBody({
             <Pressable
               key={key}
               accessibilityRole="button"
-              accessibilityLabel={day.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              accessibilityLabel={formatAccessibleDate(day)}
               accessibilityState={{ selected: active }}
               onPress={() => {
                 onSelect(key);
@@ -137,6 +140,7 @@ function TimeBody({
   onClose: () => void;
   onSelect: (value: string) => void;
 }) {
+  const text = useCopy();
   const parsed = splitClock(value);
   const [hour, setHour] = useState(timeFormat === '24' ? parsed.hour24 : parsed.hour12);
   const [minute, setMinute] = useState(parsed.minute);
@@ -150,10 +154,10 @@ function TimeBody({
 
   return (
     <>
-      <Text style={styles.timeTitle}>Time</Text>
+      <Text style={styles.timeTitle}>{text.time}</Text>
       <View style={styles.columns}>
         <TimeColumn
-          label="Hour"
+          label={text.hour}
           values={hours}
           selected={hour}
           format={(item) => (timeFormat === '24' ? pad(item) : String(item))}
@@ -163,7 +167,7 @@ function TimeBody({
           }}
         />
         <TimeColumn
-          label="Minute"
+          label={text.minute}
           values={minutes}
           selected={minute}
           format={pad}
@@ -261,7 +265,7 @@ function weekdayLabels(weekStartsOn: WeekStart) {
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(sunday);
     date.setDate(sunday.getDate() + (weekStartsOn === 'sunday' ? index : index + 1));
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return formatWeekday(date);
   });
 }
 

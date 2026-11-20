@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import {
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -235,6 +236,7 @@ export function OptionSheet({
       <Pressable style={[styles.overlay, { backgroundColor: colors.overlay }]} onPress={onClose}>
         <Pressable style={[styles.sheet, { backgroundColor: colors.card }]} onPress={() => undefined}>
           <Text style={[styles.sheetTitle, { color: colors.ink, fontSize: 18 * scale }]}>{title}</Text>
+          <ScrollView style={styles.sheetOptions} keyboardShouldPersistTaps="handled">
           {options.map((option) => {
             const active = option.id === selected;
             return (
@@ -248,6 +250,7 @@ export function OptionSheet({
               </Pressable>
             );
           })}
+          </ScrollView>
           <Pressable accessibilityRole="button" onPress={onClose} style={styles.sheetClose}>
             <Text style={{ color: colors.muted, fontSize: 15 * scale, fontWeight: 700 }}>{text.close}</Text>
           </Pressable>
@@ -433,6 +436,9 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontWeight: 700,
     marginBottom: 8,
+  },
+  sheetOptions: {
+    maxHeight: 420,
   },
   option: {
     minHeight: 48,

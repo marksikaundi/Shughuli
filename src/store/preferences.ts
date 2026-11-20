@@ -6,6 +6,7 @@ import {
   sanitizePreferences,
   type Preferences,
 } from '@/data/preferences';
+import { applyLanguage } from '@/i18n/translate';
 import { syncPlannedReminders } from '@/lib/planned-reminders';
 import { readPreferences, writePreferences } from '@/lib/preferences-file';
 import { setRuntimePrefs } from '@/lib/runtime-prefs';
@@ -27,6 +28,7 @@ const NOTIFICATION_FIELDS: (keyof Preferences)[] = [
   'notificationVibration',
   'hideSensitive',
   'planningStart',
+  'language',
 ];
 
 let hydrating: Promise<void> | null = null;
@@ -57,6 +59,7 @@ export const usePreferencesStore = create<PreferencesState>((set, get) => ({
 
 async function loadPreferences(set: (partial: Partial<PreferencesState>) => void) {
   const prefs = await readPreferences();
+  applyLanguage(prefs.language);
   setRuntimePrefs(runtimeFromPreferences(prefs));
   set({ prefs, ready: true });
   try {
@@ -72,12 +75,14 @@ async function commit(
   next: Preferences,
 ) {
   const previous = get().prefs;
+  applyLanguage(next.language);
   setRuntimePrefs(runtimeFromPreferences(next));
   set({ prefs: next });
   try {
     await writePreferences(next);
     await syncIfNeeded(previous, next);
   } catch (error) {
+    applyLanguage(previous.language);
     setRuntimePrefs(runtimeFromPreferences(previous));
     set({ prefs: previous });
     throw error;
@@ -92,6 +97,7 @@ async function syncIfNeeded(previous: Preferences, next: Preferences) {
     previous.taskReminders !== next.taskReminders ||
     previous.notificationSound !== next.notificationSound ||
     previous.notificationVibration !== next.notificationVibration ||
-    previous.hideSensitive !== next.hideSensitive;
+    previous.hideSensitive !== next.hideSensitive ||
+    previous.language !== next.language;
   if (tasksChanged) await useTaskStore.getState().syncReminders();
 }

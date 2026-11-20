@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Screen } from '@/components/screen';
 import { Palette } from '@/constants/palette';
+import { useCopy } from '@/lib/settings-copy';
 import {
   isPlayStoreNotification,
   notifyPlayUpdate,
@@ -17,6 +18,7 @@ import {
 } from '@/lib/play-update';
 
 export function ForceUpdateGate() {
+  const text = useCopy();
   const insets = useSafeAreaInsets();
   const [required, setRequired] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -101,25 +103,23 @@ export function ForceUpdateGate() {
       <Screen>
         <View style={[styles.content, { paddingTop: insets.top + 48, paddingBottom: insets.bottom + 28 }]}>
           <Text style={styles.kicker}>Google Play</Text>
-          <Text style={styles.title}>Update required</Text>
-          <Text style={styles.body}>
-            A new version of Shughuli is on the Play Store. Update to keep using the app.
-          </Text>
+          <Text style={styles.title}>{text.updateRequired}</Text>
+          <Text style={styles.body}>{text.updateRequiredBody}</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Update now"
+            accessibilityLabel={text.updateNow}
             disabled={busy}
             onPress={() => void updateNow()}
             style={({ pressed }) => [styles.primary, pressed && styles.pressed, busy && styles.disabled]}>
-            <Text style={styles.primaryLabel}>{busy ? 'Opening update…' : 'Update now'}</Text>
+            <Text style={styles.primaryLabel}>{busy ? text.openingUpdate : text.updateNow}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Open Play Store"
+            accessibilityLabel={text.openPlayStore}
             disabled={busy}
             onPress={() => void openPlayStore()}
             style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
-            <Text style={styles.secondaryLabel}>Open Play Store</Text>
+            <Text style={styles.secondaryLabel}>{text.openPlayStore}</Text>
           </Pressable>
         </View>
       </Screen>

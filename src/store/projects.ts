@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { getDb } from '@/db/client';
 import { migrateDb } from '@/db/migrate';
 import { projectTable, taskTable } from '@/db/schema';
+import { getCopy } from '@/i18n/translate';
 
 export type Project = {
   id: string;
@@ -33,9 +34,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
   addProject: async (name) => {
     const nextName = name.trim();
-    if (!nextName) throw new Error('Add a project name');
+    if (!nextName) throw new Error(getCopy().addProjectName);
     if (get().projects.some((project) => project.name.toLowerCase() === nextName.toLowerCase())) {
-      throw new Error('You already have this project');
+      throw new Error(getCopy().projectExists);
     }
     const project: Project = {
       id: `project-${Date.now()}`,

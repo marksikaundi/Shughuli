@@ -20,13 +20,10 @@ import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { useProjects } from '@/data/projects';
 import { formatClock, formatDate, toDateKey, useTasks, type Priority, type Task } from '@/data/tasks';
+import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
-const PRIORITIES: { id: Priority; label: string }[] = [
-  { id: 'low', label: 'Low' },
-  { id: 'medium', label: 'Medium' },
-  { id: 'high', label: 'High' },
-];
+const PRIORITIES: Priority[] = ['low', 'medium', 'high'];
 
 export default function AddTaskScreen() {
   const params = useLocalSearchParams<{ id?: string; project?: string }>();
@@ -43,6 +40,7 @@ export default function AddTaskScreen() {
 }
 
 function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?: string }) {
+  const text = useCopy();
   const insets = useSafeAreaInsets();
   const { addTask, updateTask, deleteTask } = useTasks();
   const { projects } = useProjects();
@@ -98,7 +96,7 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
     if (busy) return;
     const nextTitle = title.trim();
     if (!nextTitle) {
-      setError('Add a task title');
+      setError(text.addTaskTitleError);
       return;
     }
     const draft = {
@@ -120,16 +118,16 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
       leave();
     } catch {
       setBusy(false);
-      setError('Could not save this task on the device.');
+      setError(text.couldNotSaveTask);
     }
   }
 
   function confirmDelete() {
     if (!task || busy) return;
-    Alert.alert('Delete this task?', 'It will be removed from this device.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(text.deleteTaskTitle, text.deleteTaskBody, [
+      { text: text.cancel, style: 'cancel' },
       {
-        text: 'Delete',
+        text: text.delete,
         style: 'destructive',
         onPress: () => {
           void remove();
@@ -146,7 +144,7 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
       leave();
     } catch {
       setBusy(false);
-      setError('Could not delete this task on the device.');
+      setError(text.couldNotDeleteTask);
     }
   }
 
@@ -163,30 +161,30 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
             paddingHorizontal: Layout.padding,
           }}>
           <View style={styles.header}>
-            <IconButton icon="close" accessibilityLabel="Close" onPress={leave} />
-            <Text style={styles.headerTitle}>{editing ? 'Edit Task' : 'Add New Task'}</Text>
-            <IconButton icon="check" accessibilityLabel="Save task" onPress={save} />
+            <IconButton icon="close" accessibilityLabel={text.close} onPress={leave} />
+            <Text style={styles.headerTitle}>{editing ? text.editTask : text.addNewTask}</Text>
+            <IconButton icon="check" accessibilityLabel={text.saveTask} onPress={save} />
           </View>
 
-          <Field label="Task Title">
+          <Field label={text.taskTitle}>
             <TextInput
               value={title}
               onChangeText={(value) => {
                 setTitle(value);
                 if (error) setError('');
               }}
-              placeholder="Task title"
+              placeholder={text.taskTitlePlaceholder}
               placeholderTextColor={Palette.faint}
               style={styles.input}
             />
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </Field>
 
-          <Field label="Description">
+          <Field label={text.description}>
             <TextInput
               value={description}
               onChangeText={setDescription}
-              placeholder="What needs to happen?"
+              placeholder={text.descriptionPlaceholder}
               placeholderTextColor={Palette.faint}
               multiline
               textAlignVertical="top"
@@ -194,11 +192,11 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
             />
           </Field>
 
-          <Field label="Due Date & time">
+          <Field label={text.dueDateTime}>
             <View style={styles.dueRow}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Choose due date"
+                accessibilityLabel={text.chooseDueDate}
                 onPress={() => {
                   Keyboard.dismiss();
                   setScheduleOpen('date');
@@ -211,7 +209,7 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Choose time"
+                accessibilityLabel={text.chooseTime}
                 onPress={() => {
                   Keyboard.dismiss();
                   setScheduleOpen('time');
@@ -220,35 +218,36 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
                 <Icon name="clock" size={16} color={Palette.ink} />
                 <Text style={styles.dueText} numberOfLines={1}>
                   {formatClock(start, timeFormat)}
-                  {editing ? '' : ` · ${duration} min`}
+                  {editing ? '' : ` · ${duration} ${text.minutes}`}
                 </Text>
               </Pressable>
             </View>
           </Field>
 
-          <Field label="Priority">
+          <Field label={text.priority}>
             <View style={styles.priorities}>
-              {PRIORITIES.map((item) => {
-                const selected = priority === item.id;
+              {PRIORITIES.map((id) => {
+                const selected = priority === id;
+                const label = id === 'low' ? text.low : id === 'medium' ? text.medium : text.high;
                 return (
                   <Pressable
-                    key={item.id}
-                    onPress={() => setPriority(item.id)}
+                    key={id}
+                    onPress={() => setPriority(id)}
                     style={[
                       styles.priority,
-                      item.id === 'low' && styles.priorityLow,
-                      item.id === 'medium' && styles.priorityMedium,
-                      item.id === 'high' && styles.priorityHigh,
+                      id === 'low' && styles.priorityLow,
+                      id === 'medium' && styles.priorityMedium,
+                      id === 'high' && styles.priorityHigh,
                       selected && styles.prioritySelected,
                     ]}>
                     <Text
                       style={[
                         styles.priorityText,
-                        item.id === 'low' && styles.priorityLowText,
-                        item.id === 'medium' && styles.priorityMediumText,
-                        item.id === 'high' && styles.priorityHighText,
+                        id === 'low' && styles.priorityLowText,
+                        id === 'medium' && styles.priorityMediumText,
+                        id === 'high' && styles.priorityHighText,
                       ]}>
-                      {item.label}
+                      {label}
                     </Text>
                   </Pressable>
                 );
@@ -256,9 +255,9 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
             </View>
           </Field>
 
-          <Field label="Project">
+          <Field label={text.project}>
             {projectOptions.length === 0 ? (
-              <Text style={styles.projectHint}>Create a project in Projects, then choose it here.</Text>
+              <Text style={styles.projectHint}>{text.projectHint}</Text>
             ) : (
               <View style={styles.projects}>
                 {projectOptions.map((name) => {
@@ -279,7 +278,7 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
             )}
           </Field>
 
-          <Field label="Tags">
+          <Field label={text.tags}>
             <View style={styles.tags}>
               {tags.map((tag) => (
                 <Pressable
@@ -297,14 +296,14 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
                   onSubmitEditing={commitTag}
                   onBlur={commitTag}
                   autoFocus
-                  placeholder="Tag"
+                  placeholder={text.tag}
                   placeholderTextColor={Palette.faint}
                   style={styles.tagInput}
                 />
               ) : (
                 <Pressable style={styles.addTag} onPress={() => setAddingTag(true)}>
                   <Icon name="plus" size={14} color={Palette.ink} />
-                  <Text style={styles.addTagText}>Add</Text>
+                  <Text style={styles.addTagText}>{text.add}</Text>
                 </Pressable>
               )}
             </View>
@@ -314,16 +313,16 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
             disabled={busy}
             style={({ pressed }) => [styles.create, pressed && styles.pressed]}
             onPress={save}>
-            <Text style={styles.createText}>{editing ? 'Save Changes' : 'Create Task'}</Text>
+            <Text style={styles.createText}>{editing ? text.saveChanges : text.createTask}</Text>
           </Pressable>
           {editing ? (
             <Pressable
               disabled={busy}
               accessibilityRole="button"
-              accessibilityLabel="Delete task"
+              accessibilityLabel={text.deleteTask}
               style={({ pressed }) => [styles.delete, pressed && styles.pressed]}
               onPress={confirmDelete}>
-              <Text style={styles.deleteText}>Delete Task</Text>
+              <Text style={styles.deleteText}>{text.deleteTaskButton}</Text>
             </Pressable>
           ) : null}
         </ScrollView>
@@ -347,6 +346,7 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
 }
 
 function MissingTask() {
+  const text = useCopy();
   const insets = useSafeAreaInsets();
 
   return (
@@ -354,14 +354,14 @@ function MissingTask() {
       <View style={[styles.missing, { paddingTop: insets.top + 8, paddingHorizontal: Layout.padding }]}>
         <IconButton
           icon="close"
-          accessibilityLabel="Close"
+          accessibilityLabel={text.close}
           onPress={() => {
             if (router.canGoBack()) router.back();
             else router.replace('/');
           }}
         />
-        <Text style={styles.missingTitle}>This task is gone</Text>
-        <Text style={styles.missingBody}>It is no longer saved on this device.</Text>
+        <Text style={styles.missingTitle}>{text.taskGoneTitle}</Text>
+        <Text style={styles.missingBody}>{text.taskGoneBody}</Text>
       </View>
     </Screen>
   );

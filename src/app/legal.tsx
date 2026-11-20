@@ -6,7 +6,8 @@ import { IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout } from '@/constants/palette';
 import { useScreenStatusBar, useSettingsTheme } from '@/hooks/use-settings-theme';
-import { useCopy } from '@/lib/settings-copy';
+import { en } from '@/i18n/messages';
+import { getCatalogId, useCopy } from '@/lib/settings-copy';
 
 export default function LegalScreen() {
   const insets = useSafeAreaInsets();
@@ -14,6 +15,8 @@ export default function LegalScreen() {
   const text = useCopy();
   const params = useLocalSearchParams<{ doc?: string }>();
   const terms = params.doc === 'terms';
+  const body = terms ? text.termsBody : text.privacyBody;
+  const showingEnglish = getCatalogId() !== 'en' && body === (terms ? en.termsBody : en.privacyBody);
   useScreenStatusBar(theme.dark);
 
   return (
@@ -31,8 +34,11 @@ export default function LegalScreen() {
             {terms ? text.terms : text.privacyPolicy}
           </Text>
         </View>
+        {showingEnglish ? (
+          <Text style={[styles.note, { color: theme.colors.muted, fontSize: 14 * theme.scale }]}>{text.legalEnglishNote}</Text>
+        ) : null}
         <Text style={[styles.body, { color: theme.colors.ink, fontSize: 16 * theme.scale, lineHeight: 24 * theme.scale }]}>
-          {terms ? text.termsBody : text.privacyBody}
+          {body}
         </Text>
       </ScrollView>
     </Screen>
@@ -50,7 +56,11 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     letterSpacing: -0.6,
   },
+  note: {
+    marginTop: 16,
+    fontWeight: 600,
+  },
   body: {
-    marginTop: 20,
+    marginTop: 12,
   },
 });

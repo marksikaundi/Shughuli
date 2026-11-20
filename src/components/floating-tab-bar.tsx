@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/icon';
 import { Layout, Palette } from '@/constants/palette';
+import { useCopy } from '@/lib/settings-copy';
 
 const ICONS: Record<string, IconName> = {
   index: 'home',
@@ -13,6 +14,7 @@ const ICONS: Record<string, IconName> = {
 };
 
 export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
+  const text = useCopy();
   const pathname = usePathname();
   const midpoint = Math.ceil(state.routes.length / 2);
   const leading = state.routes.slice(0, midpoint);
@@ -26,7 +28,7 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
           {leading.map((route, index) => renderTab(route, index))}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Add task"
+            accessibilityLabel={text.addTask}
             onPress={() => router.push('/add-task')}
             style={({ pressed }) => [styles.add, pressed && styles.pressed]}>
             <Icon name="plus" size={26} color={Palette.white} />

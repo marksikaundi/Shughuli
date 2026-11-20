@@ -9,6 +9,7 @@ import {
 } from '@/data/preferences';
 import type { Priority, Task, TaskCategory, TaskKind, TaskStatus } from '@/data/model';
 import { PEOPLE, type PersonId } from '@/data/people';
+import { getCopy } from '@/i18n/translate';
 import { clearPin } from '@/lib/app-lock';
 import { readAllNotes, writeNoteContents } from '@/lib/notes';
 import { cancelPlannedReminders } from '@/lib/planned-reminders';
@@ -110,14 +111,14 @@ export async function restoreBackup(record: BackupRecord) {
 }
 
 export async function restorePickedFile() {
-  if (Platform.OS === 'web') throw new Error('Choose a backup from the list saved in this browser.');
+  if (Platform.OS === 'web') throw new Error(getCopy().chooseBackup);
   const picked = await File.pickFileAsync({ mimeTypes: ['application/json', 'text/plain', 'text/*'] });
   if (picked.canceled || !picked.result) throw new ActionCancelled();
   await restoreJson(picked.result.textSync());
 }
 
 export async function chooseAvatar() {
-  if (Platform.OS === 'web') throw new Error('A profile photo can be saved on iPhone and Android.');
+  if (Platform.OS === 'web') throw new Error(getCopy().photoMobileOnly);
   const picked = await File.pickFileAsync({ mimeTypes: ['image/*'] });
   if (picked.canceled || !picked.result) return null;
   const folder = appFolder();
@@ -220,12 +221,12 @@ function parseBackup(raw: string): BackupFile {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error('This file isn’t a Shughuli backup.');
+    throw new Error(getCopy().notBackup);
   }
-  if (!parsed || typeof parsed !== 'object') throw new Error('This file isn’t a Shughuli backup.');
+  if (!parsed || typeof parsed !== 'object') throw new Error(getCopy().notBackup);
   const record = parsed as Partial<BackupFile>;
   if (record.app !== 'shughuli' || !Array.isArray(record.tasks)) {
-    throw new Error('This file isn’t a Shughuli backup.');
+    throw new Error(getCopy().notBackup);
   }
   const tasks = record.tasks.map(normalizeTask);
   return {
@@ -274,7 +275,7 @@ function normalizeTask(value: unknown): Task {
   const kind: TaskKind = input.kind === 'meeting' ? 'meeting' : 'task';
   return {
     id: typeof input.id === 'string' && input.id ? input.id : `task-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    title: typeof input.title === 'string' && input.title.trim() ? input.title.trim() : 'Untitled task',
+    title: typeof input.title === 'string' && input.title.trim() ? input.title.trim() : getCopy().untitledTask,
     description: typeof input.description === 'string' ? input.description : '',
     date: typeof input.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input.date) ? input.date : todayKey(),
     start: clock(input.start, '09:00'),

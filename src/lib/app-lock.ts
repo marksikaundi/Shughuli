@@ -3,6 +3,8 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
+import { getCopy } from '@/i18n/translate';
+
 const PIN_KEY = 'shughuli.pin';
 
 export type BiometricKind = 'none' | 'face' | 'fingerprint' | 'biometric';
@@ -27,9 +29,9 @@ export async function unlockWithBiometrics() {
   if (Platform.OS === 'web') return false;
   try {
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Unlock Shughuli',
-      cancelLabel: 'Use PIN',
-      fallbackLabel: 'Use PIN',
+      promptMessage: getCopy().unlockPrompt,
+      cancelLabel: getCopy().usePin,
+      fallbackLabel: getCopy().usePin,
       disableDeviceFallback: true,
     });
     return result.success;
@@ -43,9 +45,9 @@ export async function hasPin() {
 }
 
 export async function savePin(pin: string) {
-  if (!/^\d{4}$/.test(pin)) throw new Error('Use a 4-digit PIN.');
+  if (!/^\d{4}$/.test(pin)) throw new Error(getCopy().pinDigits);
   const hash = await hashPin(pin);
-  if (Platform.OS === 'web') throw new Error('App lock is available on iPhone and Android.');
+  if (Platform.OS === 'web') throw new Error(getCopy().webLock);
   await SecureStore.setItemAsync(PIN_KEY, hash, {
     keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   });

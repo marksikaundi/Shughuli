@@ -4,16 +4,23 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon } from '@/components/icon';
 import { Palette, cardShadow } from '@/constants/palette';
 import { formatClock, type Task } from '@/data/tasks';
+import { fill, useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
 const PRIORITY_TONE = {
-  high: { bg: Palette.dangerSoft, text: Palette.danger, label: 'High Priority' },
-  medium: { bg: '#FFF1DE', text: '#C56A12', label: 'Medium Priority' },
-  low: { bg: '#EEF8DC', text: Palette.limeDeep, label: 'Low Priority' },
+  high: { bg: Palette.dangerSoft, text: Palette.danger },
+  medium: { bg: '#FFF1DE', text: '#C56A12' },
+  low: { bg: '#EEF8DC', text: Palette.limeDeep },
 } as const;
 
 export function TaskCard({ task }: { task: Task }) {
+  const text = useCopy();
   const tone = PRIORITY_TONE[task.priority];
+  const priorityLabel = {
+    high: text.highPriority,
+    medium: text.mediumPriority,
+    low: text.lowPriority,
+  }[task.priority];
   const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
   const visibility = usePreferencesStore((state) => state.prefs.completedVisibility);
   const dimmed = visibility === 'dim' && task.status === 'done';
@@ -21,13 +28,13 @@ export function TaskCard({ task }: { task: Task }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Edit ${task.title}`}
+      accessibilityLabel={fill(text.editNamed, { name: task.title })}
       onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
       style={[styles.card, dimmed && styles.dimmed]}>
       <View style={styles.cardTop}>
         <View style={[styles.priority, { backgroundColor: tone.bg }]}>
           <View style={[styles.priorityDot, { backgroundColor: tone.text }]} />
-          <Text style={[styles.priorityText, { color: tone.text }]}>{tone.label}</Text>
+          <Text style={[styles.priorityText, { color: tone.text }]}>{priorityLabel}</Text>
         </View>
         <View style={styles.arrow}>
           <Icon name="arrow" size={14} color={Palette.ink} />

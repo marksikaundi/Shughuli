@@ -7,6 +7,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AppLockShell } from '@/components/app-lock-shell';
 import { ForceUpdateGate } from '@/components/force-update-gate';
 import { Palette } from '@/constants/palette';
+import { useCopy } from '@/lib/settings-copy';
 import { syncAllTasks } from '@/lib/google-calendar';
 import { syncPlannedReminders } from '@/lib/planned-reminders';
 import { usePreferencesStore } from '@/store/preferences';
@@ -21,6 +22,7 @@ export default function RootLayout() {
   const prefsReady = usePreferencesStore((state) => state.ready);
   const error = useTaskStore((state) => state.error);
   const reduceMotion = usePreferencesStore((state) => state.prefs.reduceMotion);
+  const text = useCopy();
 
   useEffect(() => {
     Promise.all([
@@ -42,7 +44,7 @@ export default function RootLayout() {
     <View style={styles.root}>
       {!ready || !projectsReady || !prefsReady ? null : error ? (
         <View style={styles.error}>
-          <Text style={styles.errorTitle}>Couldn’t open your tasks</Text>
+          <Text style={styles.errorTitle}>{text.couldNotOpenTasks}</Text>
           <Text style={styles.errorBody}>{error}</Text>
         </View>
       ) : (

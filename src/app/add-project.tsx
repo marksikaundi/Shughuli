@@ -7,8 +7,10 @@ import { IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { useProjects } from '@/data/projects';
+import { useCopy } from '@/lib/settings-copy';
 
 export default function AddProjectScreen() {
+  const text = useCopy();
   const insets = useSafeAreaInsets();
   const { addProject } = useProjects();
   const [name, setName] = useState('');
@@ -24,7 +26,7 @@ export default function AddProjectScreen() {
     if (busy) return;
     const nextName = name.trim();
     if (!nextName) {
-      setError('Add a project name');
+      setError(text.addProjectName);
       return;
     }
     setBusy(true);
@@ -33,7 +35,7 @@ export default function AddProjectScreen() {
       leave();
     } catch (caught) {
       setBusy(false);
-      setError(caught instanceof Error ? caught.message : 'Could not save this project on the device.');
+      setError(caught instanceof Error ? caught.message : text.couldNotSaveProject);
     }
   }
 
@@ -50,21 +52,21 @@ export default function AddProjectScreen() {
             },
           ]}>
           <View style={styles.header}>
-            <IconButton icon="close" accessibilityLabel="Close" onPress={leave} />
-            <Text style={styles.headerTitle}>New Project</Text>
-            <IconButton icon="check" accessibilityLabel="Save project" onPress={save} />
+            <IconButton icon="close" accessibilityLabel={text.close} onPress={leave} />
+            <Text style={styles.headerTitle}>{text.newProjectTitle}</Text>
+            <IconButton icon="check" accessibilityLabel={text.saveProject} onPress={save} />
           </View>
 
-          <Text style={styles.lead}>Name a project you’re working on. Tasks can be added to it when you create them.</Text>
+          <Text style={styles.lead}>{text.newProjectLead}</Text>
 
-          <Text style={styles.label}>Project name</Text>
+          <Text style={styles.label}>{text.projectName}</Text>
           <TextInput
             value={name}
             onChangeText={(value) => {
               setName(value);
               if (error) setError('');
             }}
-            placeholder="Project you’re working on"
+            placeholder={text.projectPlaceholder}
             placeholderTextColor={Palette.faint}
             autoFocus
             style={styles.input}
@@ -77,7 +79,7 @@ export default function AddProjectScreen() {
             disabled={busy}
             style={({ pressed }) => [styles.create, pressed && styles.pressed]}
             onPress={save}>
-            <Text style={styles.createText}>Create Project</Text>
+            <Text style={styles.createText}>{text.createProject}</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>

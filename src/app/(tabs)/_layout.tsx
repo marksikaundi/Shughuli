@@ -1,8 +1,10 @@
 import { Tabs } from 'expo-router';
 
 import { FloatingTabBar } from '@/components/floating-tab-bar';
+import { useCopy } from '@/lib/settings-copy';
 
 export default function TabLayout() {
+  const text = useCopy();
   return (
     <Tabs
       tabBar={(props) => <FloatingTabBar {...props} />}
@@ -14,10 +16,10 @@ export default function TabLayout() {
           backgroundColor: 'transparent',
         },
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="projects" options={{ title: 'Projects' }} />
-      <Tabs.Screen name="calendar" options={{ title: 'Calendar' }} />
-      <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
+      <Tabs.Screen name="index" options={{ title: text.tabHome }} />
+      <Tabs.Screen name="projects" options={{ title: text.tabProjects }} />
+      <Tabs.Screen name="calendar" options={{ title: text.tabCalendar }} />
+      <Tabs.Screen name="settings" options={{ title: text.tabSettings }} />
     </Tabs>
   );
 }

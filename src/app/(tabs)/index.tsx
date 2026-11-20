@@ -11,15 +11,13 @@ import { TaskCard } from '@/components/task-card';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { toDateKey, useTasks, type TaskStatus } from '@/data/tasks';
 import { accentById } from '@/data/preferences';
+import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
-const FILTERS: { id: Exclude<TaskStatus, 'done'>; label: string }[] = [
-  { id: 'todo', label: 'To Do' },
-  { id: 'in_progress', label: 'In Progress' },
-  { id: 'in_review', label: 'In Review' },
-];
+const FILTERS: Exclude<TaskStatus, 'done'>[] = ['todo', 'in_progress', 'in_review'];
 
 export default function HomeScreen() {
+  const text = useCopy();
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
   const visibility = usePreferencesStore((state) => state.prefs.completedVisibility);
@@ -48,8 +46,13 @@ export default function HomeScreen() {
     };
   }, [todayTasks]);
 
-  const filters: { id: TaskStatus; label: string }[] =
-    visibility === 'hide' ? [...FILTERS] : [...FILTERS, { id: 'done', label: 'Done' }];
+  const statusLabel: Record<TaskStatus, string> = {
+    todo: text.todo,
+    in_progress: text.inProgress,
+    in_review: text.inReview,
+    done: text.done,
+  };
+  const filterIds: TaskStatus[] = visibility === 'hide' ? [...FILTERS] : [...FILTERS, 'done'];
   const source = visibility === 'hide' ? todaysTasks : todayTasks;
   const activeFilter = visibility === 'hide' && filter === 'done' ? 'todo' : filter;
   const visible = activeFilter === 'all' ? source : source.filter((task) => task.status === activeFilter);
@@ -70,20 +73,20 @@ export default function HomeScreen() {
             <IconButton
               icon="plus"
               variant="dark"
-              accessibilityLabel="Add task"
+              accessibilityLabel={text.addTask}
               onPress={() => router.push('/add-task')}
             />
-            <IconButton icon="bell" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
+            <IconButton icon="bell" accessibilityLabel={text.settings} onPress={() => router.push('/settings')} />
           </View>
         </View>
 
-        <Text style={styles.headline}>{"Let's Make\nToday Productive"}</Text>
+        <Text style={styles.headline}>{text.headline}</Text>
 
         {tasks.length === 0 ? (
           <EmptyState
-            title="Your day is open"
-            body="Add a task and it will show up here with its time and priority."
-            actionLabel="Add a task"
+            title={text.dayOpenTitle}
+            body={text.dayOpenBody}
+            actionLabel={text.addTask}
             onAction={() => router.push('/add-task')}
             style={styles.firstEmpty}
           />
@@ -92,16 +95,16 @@ export default function HomeScreen() {
             <View style={styles.progressCard}>
               <ProgressRing progress={progress} color={accentById(accent).ring} />
               <View style={styles.stats}>
-                <Stat icon="grid" value={String(todayTasks.length)} label="Total Task" />
-                <Stat icon="done" value={String(completed)} label="Completed Task" />
-                <Stat icon="pending" value={String(todaysTasks.length)} label="Pending Task" />
+                <Stat icon="grid" value={String(todayTasks.length)} label={text.totalTask} />
+                <Stat icon="done" value={String(completed)} label={text.completedTask} />
+                <Stat icon="pending" value={String(todaysTasks.length)} label={text.pendingTask} />
               </View>
             </View>
 
             <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>Today&apos;s Tasks</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="View all tasks" onPress={() => router.push('/tasks')} hitSlop={8}>
-                <Text style={styles.viewAll}>View All</Text>
+              <Text style={styles.sectionTitle}>{text.todaysTasks}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel={text.viewAllTasks} onPress={() => router.push('/tasks')} hitSlop={8}>
+                <Text style={styles.viewAll}>{text.viewAll}</Text>
               </Pressable>
             </View>
 
@@ -110,15 +113,15 @@ export default function HomeScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.filters}
               style={styles.filterScroll}>
-              {filters.map((item) => {
-                const selected = activeFilter === item.id;
+              {filterIds.map((id) => {
+                const selected = activeFilter === id;
                 return (
                   <Pressable
-                    key={item.id}
-                    onPress={() => setFilter(item.id)}
+                    key={id}
+                    onPress={() => setFilter(id)}
                     style={[styles.chip, selected && styles.chipSelected]}>
-                    <Text style={[styles.chipCount, selected && styles.chipCountSelected]}>{counts[item.id]}</Text>
-                    <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{item.label}</Text>
+                    <Text style={[styles.chipCount, selected && styles.chipCountSelected]}>{counts[id]}</Text>
+                    <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{statusLabel[id]}</Text>
                   </Pressable>
                 );
               })}
@@ -128,8 +131,8 @@ export default function HomeScreen() {
               {visible.length === 0 ? (
                 <EmptyState
                   compact
-                  title="Nothing in this list"
-                  body="Tasks with this status will show up here."
+                  title={text.nothingInListTitle}
+                  body={text.nothingInListBody}
                 />
               ) : (
                 visible.map((task) => <TaskCard key={task.id} task={task} />)

@@ -9,22 +9,25 @@ import { Screen } from '@/components/screen';
 import { TaskCard } from '@/components/task-card';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { formatDate, toDateKey, useTasks, type Task, type TaskStatus } from '@/data/tasks';
+import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
-const FILTERS: { id: TaskStatus | 'all'; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'todo', label: 'To Do' },
-  { id: 'in_progress', label: 'In Progress' },
-  { id: 'in_review', label: 'In Review' },
-  { id: 'done', label: 'Done' },
-];
+const FILTERS: (TaskStatus | 'all')[] = ['all', 'todo', 'in_progress', 'in_review', 'done'];
 
 export default function TasksScreen() {
+  const text = useCopy();
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
   const visibility = usePreferencesStore((state) => state.prefs.completedVisibility);
   const [filter, setFilter] = useState<TaskStatus | 'all'>('all');
-  const filters = visibility === 'hide' ? FILTERS.filter((item) => item.id !== 'done') : FILTERS;
+  const filters = visibility === 'hide' ? FILTERS.filter((item) => item !== 'done') : FILTERS;
+  const statusLabel: Record<TaskStatus | 'all', string> = {
+    all: text.all,
+    todo: text.todo,
+    in_progress: text.inProgress,
+    in_review: text.inReview,
+    done: text.done,
+  };
   const activeFilter = visibility === 'hide' && filter === 'done' ? 'all' : filter;
 
   const groups = useMemo(() => {
@@ -48,10 +51,10 @@ export default function TasksScreen() {
       })
       .map(([date, items]) => ({
         date,
-        label: dateLabel(date, today),
+        label: dateLabel(date, today, text),
         items: items.sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title)),
       }));
-  }, [activeFilter, tasks, visibility]);
+  }, [activeFilter, tasks, text, visibility]);
 
   return (
     <Screen>
@@ -63,16 +66,16 @@ export default function TasksScreen() {
           paddingHorizontal: Layout.padding,
         }}>
         <View style={styles.header}>
-          <IconButton icon="back" accessibilityLabel="Back" onPress={() => router.back()} />
+          <IconButton icon="back" accessibilityLabel={text.back} onPress={() => router.back()} />
           <IconButton
             icon="plus"
             variant="dark"
-            accessibilityLabel="Add task"
+            accessibilityLabel={text.addTask}
             onPress={() => router.push('/add-task')}
           />
         </View>
-        <Text style={styles.title}>Tasks</Text>
-        <Text style={styles.lead}>Every task on this phone, grouped by day.</Text>
+        <Text style={styles.title}>{text.tasks}</Text>
+        <Text style={styles.lead}>{text.tasksLead}</Text>
 
         <ScrollView
           horizontal
@@ -80,13 +83,13 @@ export default function TasksScreen() {
           contentContainerStyle={styles.filters}
           style={styles.filterScroll}>
           {filters.map((item) => {
-            const selected = activeFilter === item.id;
+            const selected = activeFilter === item;
             return (
               <Pressable
-                key={item.id}
-                onPress={() => setFilter(item.id)}
+                key={item}
+                onPress={() => setFilter(item)}
                 style={[styles.chip, selected && styles.chipSelected]}>
-                <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{item.label}</Text>
+                <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{statusLabel[item]}</Text>
               </Pressable>
             );
           })}
@@ -94,9 +97,9 @@ export default function TasksScreen() {
 
         {groups.length === 0 ? (
           <EmptyState
-            title="No tasks yet"
-            body="Add a task and it will show up here with its day and time."
-            actionLabel="Add a task"
+            title={text.noTasksYet}
+            body={text.noTasksBody}
+            actionLabel={text.addTask}
             onAction={() => router.push('/add-task')}
             style={styles.empty}
           />
@@ -123,14 +126,14 @@ function dateRank(date: string, today: string) {
   return 2;
 }
 
-function dateLabel(date: string, today: string) {
-  if (date === today) return 'Today';
+function dateLabel(date: string, today: string, text: ReturnType<typeof useCopy>) {
+  if (date === today) return text.today;
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  if (date === toDateKey(tomorrow)) return 'Tomorrow';
+  if (date === toDateKey(tomorrow)) return text.tomorrow;
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  if (date === toDateKey(yesterday)) return 'Yesterday';
+  if (date === toDateKey(yesterday)) return text.yesterday;
   const [year, month, day] = date.split('-').map(Number);
   return formatDate(new Date(year, month - 1, day));
 }

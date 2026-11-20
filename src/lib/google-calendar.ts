@@ -3,6 +3,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import { taskMoment, toDateKey, type Task } from '@/data/model';
+import { getCopy } from '@/i18n/translate';
 
 const FILE_NAME = 'calendar.json';
 const CALENDAR_TITLE = 'Shughuli';
@@ -43,17 +44,17 @@ export async function calendarAccessGranted() {
 
 export async function connectGoogleCalendar(consent = false) {
   if (Platform.OS === 'web') {
-    throw new Error('Google Calendar connects on the phone, using the Google account signed in there.');
+    throw new Error(getCopy().googlePhoneOnly);
   }
 
   const existing = await Calendar.getCalendarPermissionsAsync();
   if (!existing.granted) {
     if (!consent) {
-      throw new Error('Agree to calendar access before Shughuli can use Google Calendar.');
+      throw new Error(getCopy().agreeCalendar);
     }
     const permission = await Calendar.requestCalendarPermissionsAsync();
     if (!permission.granted) {
-      throw new Error('Allow calendar access so Shughuli can read your schedule and add tasks to Google Calendar.');
+      throw new Error(getCopy().allowCalendar);
     }
   }
 
@@ -153,7 +154,7 @@ export async function googleEventsOn(date: Date): Promise<GoogleScheduleItem[]> 
     .filter((event) => !mirrored.has(event.id))
     .map((event) => ({
       id: `google-${event.id}`,
-      title: event.title || 'Untitled',
+      title: event.title || getCopy().untitled,
       start: clockFrom(event.startDate),
       end: clockFrom(event.endDate),
     }))
@@ -218,7 +219,7 @@ async function ensureShughuliCalendar() {
   const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
   const google = calendars.filter((calendar) => isGoogle(calendar) && calendar.allowsModifications);
   if (google.length === 0) {
-    throw new Error('Add the Google account in this phone’s Calendar settings, then connect again.');
+    throw new Error(getCopy().addGoogleAccount);
   }
 
   const existing = google.find((calendar) => calendar.title === CALENDAR_TITLE);
@@ -262,7 +263,7 @@ function eventToTask(event: Calendar.Event, index: number): Task {
 
   return {
     id: `task-g-${Date.now()}-${index}`,
-    title: event.title?.trim() || 'Untitled',
+    title: event.title?.trim() || getCopy().untitled,
     description: event.notes?.trim() || '',
     date: toDateKey(start),
     start: startClock,

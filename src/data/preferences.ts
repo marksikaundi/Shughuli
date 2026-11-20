@@ -1,4 +1,5 @@
 import type { Priority } from '@/data/model';
+import { isSelectableLanguage } from '@/i18n/languages';
 import type { DateFormat, ReminderSound, RuntimePrefs, TimeFormat, WeekStart } from '@/lib/runtime-prefs';
 
 export const ACCENTS = [
@@ -13,7 +14,7 @@ export type ThemeChoice = 'light' | 'dark' | 'system';
 export type FontSize = 'small' | 'default' | 'large';
 export type CompletedVisibility = 'show' | 'dim' | 'hide';
 export type TimerSound = 'chime' | 'bell' | 'none';
-export type Language = 'en' | 'sw';
+export type Language = 'system' | string;
 export type LockTimeout = 0 | 1 | 5 | 15;
 
 export type Preferences = {
@@ -50,6 +51,7 @@ export type Preferences = {
   avatarColor: AccentId;
   avatarUri: string | null;
   language: Language;
+  languagePicked: boolean;
   timeFormat: TimeFormat;
   dateFormat: DateFormat;
   lastBackupAt: string | null;
@@ -88,7 +90,8 @@ export const defaultPreferences: Preferences = {
   displayName: '',
   avatarColor: 'lime',
   avatarUri: null,
-  language: 'en',
+  language: 'system',
+  languagePicked: false,
   timeFormat: '12',
   dateFormat: 'dmy',
   lastBackupAt: null,
@@ -150,11 +153,20 @@ export function sanitizePreferences(value: unknown): Preferences {
     displayName: text(input.displayName, 40),
     avatarColor: oneOf(input.avatarColor, ACCENTS.map((item) => item.id), defaultPreferences.avatarColor),
     avatarUri: typeof input.avatarUri === 'string' && input.avatarUri.length > 0 ? input.avatarUri : null,
-    language: oneOf(input.language, ['en', 'sw'] as const, defaultPreferences.language),
+    language: languageChoice(input),
+    languagePicked: input.languagePicked === true || input.language === 'sw',
     timeFormat: oneOf(input.timeFormat, ['12', '24'] as const, defaultPreferences.timeFormat),
     dateFormat: oneOf(input.dateFormat, ['dmy', 'mdy', 'ymd'] as const, defaultPreferences.dateFormat),
     lastBackupAt: typeof input.lastBackupAt === 'string' ? input.lastBackupAt : null,
   };
+}
+
+function languageChoice(input: Partial<Preferences>): Language {
+  const code = typeof input.language === 'string' ? input.language : '';
+  const picked = input.languagePicked === true || code === 'sw';
+  if (!picked) return 'system';
+  if (code === 'system' || code === 'en' || isSelectableLanguage(code)) return code;
+  return 'system';
 }
 
 function oneOf<T extends string>(value: unknown, options: readonly T[], fallback: T): T {

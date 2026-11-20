@@ -4,6 +4,8 @@ import { AndroidImportance } from 'expo-notifications';
 import { Platform } from 'react-native';
 import { addUpdateListener, checkForUpdate, startUpdate } from 'expo-in-app-updates';
 
+import { getCopy } from '@/i18n/translate';
+
 export const ANDROID_PACKAGE = 'shughuli.com';
 export const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`;
 
@@ -55,7 +57,7 @@ export async function notifyPlayUpdate(storeVersion: string | null) {
     if (current.status !== 'granted') return;
 
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-      name: 'App updates',
+      name: getCopy().appUpdatesChannel,
       importance: AndroidImportance.HIGH,
       sound: 'default',
       enableVibrate: true,
@@ -64,7 +66,7 @@ export async function notifyPlayUpdate(storeVersion: string | null) {
     await Notifications.setNotificationCategoryAsync(CATEGORY_ID, [
       {
         identifier: OPEN_STORE_ACTION,
-        buttonTitle: 'Open Play Store',
+        buttonTitle: getCopy().openPlayStore,
         options: { opensAppToForeground: true },
       },
     ]);
@@ -73,8 +75,8 @@ export async function notifyPlayUpdate(storeVersion: string | null) {
     await Notifications.scheduleNotificationAsync({
       identifier: NOTIFICATION_ID,
       content: {
-        title: 'Update Shughuli',
-        body: 'Google Play approved a new version. Update now to keep using the app.',
+        title: getCopy().updateTitle,
+        body: getCopy().updateNotice,
         categoryIdentifier: CATEGORY_ID,
         data: { kind: 'play-update', url: PLAY_STORE_URL },
       },

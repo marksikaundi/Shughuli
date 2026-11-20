@@ -27,12 +27,15 @@ import {
   syncAllTasks,
   type GoogleScheduleItem,
 } from '@/lib/google-calendar';
+import { formatScheduleDay, formatWeekday } from '@/i18n/format';
+import { fill, getCopy, useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 import { useTaskStore } from '@/store/tasks';
 
 type Filter = 'all' | TaskCategory | 'todo';
 
 export default function CalendarScreen() {
+  const text = useCopy();
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
   const weekStartsOn = usePreferencesStore((state) => state.prefs.weekStartsOn);
@@ -94,10 +97,15 @@ export default function CalendarScreen() {
     return [...local, ...remote].sort((a, b) => a.start.localeCompare(b.start) || a.id.localeCompare(b.id));
   }, [events, filter, googleItems]);
 
-  const groups = ['Morning', 'Afternoon', 'Evening']
-    .map((label) => ({
-      label,
-      items: rows.filter((row) => periodOf(row.start) === label),
+  const periods = [
+    { id: 'Morning' as const, label: text.morning },
+    { id: 'Afternoon' as const, label: text.afternoon },
+    { id: 'Evening' as const, label: text.evening },
+  ];
+  const groups = periods
+    .map((period) => ({
+      ...period,
+      items: rows.filter((row) => periodOf(row.start) === period.id),
     }))
     .filter((group) => group.items.length > 0);
 
@@ -120,17 +128,13 @@ export default function CalendarScreen() {
       setGoogleAccount(link.account);
       setGoogleItems(await googleEventsOn(selected));
     } catch (error) {
-      Alert.alert('Google Calendar', error instanceof Error ? error.message : 'Could not connect Google Calendar on this phone.');
+      Alert.alert(text.googleCalendar, error instanceof Error ? error.message : text.googleConnectFailed);
     } finally {
       setConnecting(false);
     }
   }
 
-  const headerDate = selected.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'long',
-    day: 'numeric',
-  });
+  const headerDate = formatScheduleDay(selected);
   const showingToday = selectedKey === toDateKey(new Date());
 
   return (
@@ -144,17 +148,17 @@ export default function CalendarScreen() {
           paddingHorizontal: Layout.padding,
         }}>
         <View style={styles.header}>
-          <IconButton icon="back" accessibilityLabel="Back to home" onPress={() => router.navigate('/')} />
+          <IconButton icon="back" accessibilityLabel={text.backHome} onPress={() => router.navigate('/')} />
           <View style={styles.headerActions}>
             <IconButton
               icon="plus"
               variant="dark"
-              accessibilityLabel="Add task"
+              accessibilityLabel={text.addTask}
               onPress={() => router.push('/add-task')}
             />
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={googleAccount ? `Sync Google Calendar for ${googleAccount}` : 'Connect Google Calendar'}
+              accessibilityLabel={googleAccount ? fill(text.syncGoogle, { account: googleAccount }) : text.connectGoogle}
               disabled={connecting}
               onPress={() => void connectCalendar()}
               style={({ pressed }) => [styles.google, (pressed || connecting) && styles.googlePressed]}>
@@ -167,10 +171,10 @@ export default function CalendarScreen() {
         </View>
 
         <View style={styles.titleRow}>
-          <Text style={styles.title}>{'Task\nSchedule'}</Text>
+          <Text style={styles.title}>{text.taskSchedule}</Text>
           <View style={styles.calendarPill}>
             <Icon name="calendar" size={16} color={Palette.ink} />
-            <Text style={styles.calendarPillText}>Calendar</Text>
+            <Text style={styles.calendarPillText}>{text.tabCalendar}</Text>
           </View>
         </View>
 
@@ -181,7 +185,7 @@ export default function CalendarScreen() {
             return (
               <Pressable key={key} onPress={() => setSelected(date)} style={styles.day}>
                 <Text style={[styles.dayName, active && styles.dayNameActive]}>
-                  {date.toLocaleDateString('en-US', { weekday: 'short' })}
+                  {formatWeekday(date)}
                 </Text>
                 <View style={[styles.dayNumber, active && styles.dayNumberActive]}>
                   <Text style={[styles.dayNumberText, active && styles.dayNumberTextActive]}>{date.getDate()}</Text>
@@ -192,21 +196,21 @@ export default function CalendarScreen() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-          <FilterPill label="All" icon={null} selected={filter === 'all'} onPress={() => setFilter('all')} />
+          <FilterPill label={text.all} icon={null} selected={filter === 'all'} onPress={() => setFilter('all')} />
           <FilterPill
-            label="Work"
+            label={text.work}
             icon="briefcase"
             selected={filter === 'work'}
             onPress={() => setFilter('work')}
           />
           <FilterPill
-            label="Personal"
+            label={text.categoryPersonal}
             icon="person"
             selected={filter === 'personal'}
             onPress={() => setFilter('personal')}
           />
           <FilterPill
-            label="Todo"
+            label={text.todo}
             icon="check"
             selected={filter === 'todo'}
             onPress={() => setFilter('todo')}
@@ -216,25 +220,25 @@ export default function CalendarScreen() {
         {groups.length === 0 ? (
           <EmptyState
             icon="calendar"
-            title="Nothing scheduled"
-            body="This day is open. Add a task to put it on the timeline."
-            actionLabel="Add a task"
+            title={text.nothingScheduledTitle}
+            body={text.nothingScheduledBody}
+            actionLabel={text.addTask}
             onAction={() => router.push('/add-task')}
             style={styles.empty}
           />
         ) : (
           groups.map((group, groupIndex) => (
-            <View key={group.label} style={styles.group}>
+            <View key={group.id} style={styles.group}>
               <View style={styles.groupHeader}>
                 <View style={styles.groupTitle}>
-                  <Icon name={group.label === 'Evening' ? 'moon' : 'sun'} size={16} color={Palette.ink} />
+                  <Icon name={group.id === 'Evening' ? 'moon' : 'sun'} size={16} color={Palette.ink} />
                   <Text style={styles.groupLabel}>{group.label}</Text>
                 </View>
-                {groupIndex === 0 ? <Text style={styles.today}>{showingToday ? 'Today' : headerDate}</Text> : null}
+                {groupIndex === 0 ? <Text style={styles.today}>{showingToday ? text.today : headerDate}</Text> : null}
               </View>
               {group.items.map((row, index) =>
                 row.kind === 'task' ? (
-                  <ScheduleCard key={row.id} task={row.task} last={index === group.items.length - 1} timeFormat={timeFormat} />
+                  <ScheduleCard key={row.id} task={row.task} last={index === group.items.length - 1} timeFormat={timeFormat} text={text} />
                 ) : (
                   <GoogleCard key={row.id} item={row.item} last={index === group.items.length - 1} timeFormat={timeFormat} />
                 ),
@@ -248,13 +252,14 @@ export default function CalendarScreen() {
 }
 
 function confirmCalendarAccess() {
+  const text = getCopy();
   return new Promise<boolean>((resolve) => {
     Alert.alert(
-      'Google Calendar',
-      'Shughuli reads event titles, times, and notes from the Google calendars on this phone, from about a year ago through a year ahead, and can save them as tasks on this device. Scheduled tasks are written to a Shughuli calendar on that Google account. Google may sync those events with your Google account. Shughuli does not sell this information and does not upload it to its own server. The full policy is in Settings, under Privacy and security.',
+      text.googleCalendar,
+      text.googleConsent,
       [
-        { text: 'Not now', style: 'cancel', onPress: () => resolve(false) },
-        { text: 'Continue', onPress: () => resolve(true) },
+        { text: text.notNow, style: 'cancel', onPress: () => resolve(false) },
+        { text: text.confirm, onPress: () => resolve(true) },
       ],
       { cancelable: true, onDismiss: () => resolve(false) },
     );
@@ -334,7 +339,17 @@ function FilterPill({
   );
 }
 
-function ScheduleCard({ task, last, timeFormat }: { task: Task; last: boolean; timeFormat: '12' | '24' }) {
+function ScheduleCard({
+  task,
+  last,
+  timeFormat,
+  text,
+}: {
+  task: Task;
+  last: boolean;
+  timeFormat: '12' | '24';
+  text: ReturnType<typeof useCopy>;
+}) {
   const clock = splitClock(task.start, timeFormat);
 
   return (
@@ -349,7 +364,7 @@ function ScheduleCard({ task, last, timeFormat }: { task: Task; last: boolean; t
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Edit ${task.title}`}
+        accessibilityLabel={fill(text.editNamed, { name: task.title })}
         onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
         style={styles.eventCard}>
         <Text style={styles.eventTitle}>{task.title}</Text>
@@ -367,11 +382,11 @@ function ScheduleCard({ task, last, timeFormat }: { task: Task; last: boolean; t
           {task.kind === 'meeting' ? (
             <View style={styles.meet}>
               <Icon name="video" size={13} color={Palette.white} />
-              <Text style={styles.meetText}>Meet</Text>
+              <Text style={styles.meetText}>{text.meet}</Text>
             </View>
           ) : (
             <View style={styles.statusPill}>
-              <Text style={styles.statusText}>{task.status === 'in_progress' ? 'In Progress' : 'Scheduled'}</Text>
+              <Text style={styles.statusText}>{task.status === 'in_progress' ? text.inProgress : text.scheduled}</Text>
             </View>
           )}
         </View>

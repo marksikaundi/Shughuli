@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import type { Preferences } from '@/data/preferences';
+import { getCopy } from '@/i18n/translate';
 import { configureReminderChannel, notificationSoundName, reminderChannelId } from '@/lib/reminders';
 
 const PLANNING_ID = 'shughuli-daily-planning';
@@ -18,17 +19,17 @@ export async function syncPlannedReminders(prefs: Preferences) {
     await configureReminderChannel();
     if (prefs.dailyPlanning) {
       const [hour, minute] = prefs.planningStart.split(':').map(Number);
+      const text = getCopy();
       await scheduleDaily(PLANNING_ID, hour, minute, prefs, {
-        title: prefs.hideSensitive ? 'Reminder' : 'Plan your day',
-        body: prefs.hideSensitive
-          ? 'Your planning reminder is ready.'
-          : 'A quiet moment to set today’s tasks.',
+        title: prefs.hideSensitive ? text.reminder : text.planYourDay,
+        body: prefs.hideSensitive ? text.planningReady : text.planningBody,
       });
     }
     if (prefs.endOfDayReview) {
+      const text = getCopy();
       await scheduleDaily(REVIEW_ID, 20, 0, prefs, {
-        title: prefs.hideSensitive ? 'Reminder' : 'Review your day',
-        body: prefs.hideSensitive ? 'Your end-of-day reminder is ready.' : 'Look back at what you finished today.',
+        title: prefs.hideSensitive ? text.reminder : text.reviewYourDay,
+        body: prefs.hideSensitive ? text.reviewReady : text.reviewBody,
       });
     }
   } catch {

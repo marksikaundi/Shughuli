@@ -9,16 +9,14 @@ import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { useProjects } from '@/data/projects';
 import { useTasks, type Task } from '@/data/tasks';
+import { countPhrase, fill, useCopy } from '@/lib/settings-copy';
 
 type Board = 'all' | 'active' | 'done';
 
-const BOARDS: { id: Board; label: string }[] = [
-  { id: 'active', label: 'Active' },
-  { id: 'all', label: 'All' },
-  { id: 'done', label: 'Done' },
-];
+const BOARDS: Board[] = ['active', 'all', 'done'];
 
 export default function ProjectsScreen() {
+  const text = useCopy();
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
   const { projects: saved } = useProjects();
@@ -60,17 +58,29 @@ export default function ProjectsScreen() {
         }}>
         <View style={styles.header}>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Projects</Text>
+            <Text style={styles.title}>{text.tabProjects}</Text>
             {projects.length > 0 ? (
               <Text style={styles.subtitle}>
-                {projects.length} {projects.length === 1 ? 'project' : 'projects'} · {openTasks} open
+                {countPhrase(projects.length, {
+                  one: text.projectOne,
+                  few: text.projectFew,
+                  many: text.projectMany,
+                  other: text.projectOther,
+                })}
+                {' · '}
+                {countPhrase(openTasks, {
+                  one: text.openOne,
+                  few: text.openFew,
+                  many: text.openMany,
+                  other: text.openOther,
+                })}
               </Text>
             ) : null}
           </View>
           <IconButton
             icon="plus"
             variant="dark"
-            accessibilityLabel="Add project"
+            accessibilityLabel={text.addProject}
             onPress={() => router.push('/add-project')}
           />
         </View>
@@ -78,25 +88,26 @@ export default function ProjectsScreen() {
         {projects.length === 0 ? (
           <EmptyState
             icon="folder"
-            title="No projects yet"
-            body="Create a project you’re working on. When you add a task, you can assign it to that project."
-            actionLabel="New project"
+            title={text.noProjectsTitle}
+            body={text.noProjectsBody}
+            actionLabel={text.newProject}
             onAction={() => router.push('/add-project')}
             style={styles.empty}
           />
         ) : (
           <>
             <View style={styles.segment}>
-              {BOARDS.map((item) => {
-                const selected = board === item.id;
+              {BOARDS.map((id) => {
+                const selected = board === id;
+                const label = id === 'active' ? text.active : id === 'done' ? text.done : text.all;
                 return (
                   <Pressable
-                    key={item.id}
+                    key={id}
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
-                    onPress={() => setBoard(item.id)}
+                    onPress={() => setBoard(id)}
                     style={[styles.segmentItem, selected && styles.segmentItemOn]}>
-                    <Text style={[styles.segmentText, selected && styles.segmentTextOn]}>{item.label}</Text>
+                    <Text style={[styles.segmentText, selected && styles.segmentTextOn]}>{label}</Text>
                   </Pressable>
                 );
               })}
@@ -106,18 +117,14 @@ export default function ProjectsScreen() {
               <EmptyState
                 compact
                 icon="folder"
-                title={board === 'done' ? 'Nothing finished yet' : 'No active projects'}
-                body={
-                  board === 'done'
-                    ? 'A project lands here once every task in it is done.'
-                    : 'Projects you are still working on will show up here.'
-                }
+                title={board === 'done' ? text.nothingFinishedTitle : text.noActiveProjectsTitle}
+                body={board === 'done' ? text.nothingFinishedBody : text.noActiveProjectsBody}
                 style={styles.empty}
               />
             ) : (
               <View style={styles.list}>
                 {visible.map((project) => (
-                  <ProjectCard key={project.id} project={project} />
+                  <ProjectCard key={project.id} text={text} project={project} />
                 ))}
               </View>
             )}
@@ -129,8 +136,10 @@ export default function ProjectsScreen() {
 }
 
 function ProjectCard({
+  text,
   project,
 }: {
+  text: ReturnType<typeof useCopy>;
   project: {
     id: string;
     name: string;
@@ -142,7 +151,7 @@ function ProjectCard({
 }) {
   const progress = project.total === 0 ? 0 : project.done / project.total;
   const status =
-    project.total === 0 ? 'No tasks yet' : project.open === 0 ? 'All done' : `${project.open} open · ${project.done} done`;
+    project.total === 0 ? text.noTasksYet : project.open === 0 ? text.allDone : fill(text.openDone, { open: project.open, done: project.done });
 
   return (
     <View style={styles.card}>
@@ -163,7 +172,7 @@ function ProjectCard({
             <Pressable
               key={task.id}
               accessibilityRole="button"
-              accessibilityLabel={`Edit ${task.title}`}
+              accessibilityLabel={fill(text.editNamed, { name: task.title })}
               onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
               style={({ pressed }) => [styles.task, pressed && styles.pressed]}>
               <View style={styles.mark} />
@@ -178,11 +187,11 @@ function ProjectCard({
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Add task to ${project.name}`}
+        accessibilityLabel={fill(text.addTaskTo, { name: project.name })}
         onPress={() => router.push({ pathname: '/add-task', params: { project: project.name } })}
         style={({ pressed }) => [styles.add, pressed && styles.pressed]}>
         <Icon name="plus" size={14} color={Palette.ink} />
-        <Text style={styles.addText}>Add task</Text>
+        <Text style={styles.addText}>{text.addTask}</Text>
       </Pressable>
     </View>
   );

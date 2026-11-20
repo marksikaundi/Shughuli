@@ -5,8 +5,9 @@ import { ChoiceChips, OptionSheet, SettingsRow, SettingsSection, ToggleRow } fro
 import { SettingsPage, settingsStyles, useSave } from '@/components/settings/page';
 import { ACCENTS, type Preferences } from '@/data/preferences';
 import { formatDate } from '@/data/model';
+import { CATALOG_LANGUAGES } from '@/i18n/languages';
 import { useSettingsTheme } from '@/hooks/use-settings-theme';
-import { useCopy } from '@/lib/settings-copy';
+import { deviceLanguageLabel, languageEndonym, useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
 export default function AppearanceScreen() {
@@ -57,7 +58,12 @@ export default function AppearanceScreen() {
           ]}
         />
         <ToggleRow icon="type" label={text.reduceMotion} value={prefs.reduceMotion} onChange={(reduceMotion) => void save({ reduceMotion })} />
-        <SettingsRow icon="globe" label={text.language} value={prefs.language === 'sw' ? text.kiswahili : text.english} onPress={() => setSheet('language')} />
+        <SettingsRow
+          icon="globe"
+          label={text.language}
+          value={prefs.language === 'system' ? `${text.sameAsPhone} · ${deviceLanguageLabel()}` : languageEndonym(prefs.language)}
+          onPress={() => setSheet('language')}
+        />
         <SettingsRow icon="clock" label={text.timeFormat} value={prefs.timeFormat === '24' ? text.hour24 : text.hour12} onPress={() => setSheet('time')} />
         <SettingsRow
           icon="calendar"
@@ -72,13 +78,15 @@ export default function AppearanceScreen() {
         title={text.language}
         selected={prefs.language}
         options={[
-          { id: 'en', label: text.english },
-          { id: 'sw', label: text.kiswahili },
+          { id: 'system', label: `${text.sameAsPhone} · ${deviceLanguageLabel()}` },
+          ...CATALOG_LANGUAGES.map((id) => ({ id, label: languageEndonym(id) })).sort((a, b) =>
+            a.label.localeCompare(b.label),
+          ),
         ]}
         onClose={() => setSheet(null)}
         onSelect={(language) => {
           setSheet(null);
-          void save({ language: language as Preferences['language'] });
+          void save({ language: language as Preferences['language'], languagePicked: true });
         }}
       />
       <OptionSheet

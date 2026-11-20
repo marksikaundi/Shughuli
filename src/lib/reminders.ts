@@ -3,6 +3,7 @@ import { AndroidImportance } from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { taskMoment, type Task } from '@/data/model';
+import { getCopy } from '@/i18n/translate';
 import { getRuntimePrefs, type ReminderSound } from '@/lib/runtime-prefs';
 
 if (Platform.OS !== 'web') {
@@ -70,7 +71,7 @@ export async function configureReminderChannel() {
   const prefs = getRuntimePrefs();
   const sound = notificationSoundName(prefs.notificationSound);
   await Notifications.setNotificationChannelAsync(reminderChannelId(prefs.notificationSound, prefs.notificationVibration), {
-    name: 'Task reminders',
+    name: getCopy().taskRemindersChannel,
     importance: prefs.notificationSound === 'none' ? AndroidImportance.DEFAULT : AndroidImportance.HIGH,
     sound: sound === false ? null : sound,
     enableVibrate: prefs.notificationVibration,
@@ -95,8 +96,8 @@ export async function scheduleTaskReminder(task: Task) {
     const sound = notificationSoundName(prefs.notificationSound);
     return await Notifications.scheduleNotificationAsync({
       content: {
-        title: hidden ? 'Reminder' : task.title,
-        body: hidden ? 'Something on your list is due.' : task.description.trim() || 'This task is due now.',
+        title: hidden ? getCopy().reminder : task.title,
+        body: hidden ? getCopy().somethingDue : task.description.trim() || getCopy().taskDueNow,
         sound,
         vibrate: prefs.notificationVibration ? [0, 250, 200, 250] : undefined,
         data: { taskId: task.id },

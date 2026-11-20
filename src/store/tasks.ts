@@ -6,6 +6,7 @@ import { getDb } from '@/db/client';
 import { migrateDb } from '@/db/migrate';
 import { taskTable } from '@/db/schema';
 import { addMinutes, type Priority, type Task, type TaskCategory, type TaskDraft, type TaskKind, type TaskStatus } from '@/data/model';
+import { getCopy } from '@/i18n/translate';
 import type { PersonId } from '@/data/people';
 import { deleteAllNotes, deleteTaskNote, saveTaskNote } from '@/lib/notes';
 import { clearSyncedEvents, removeTaskFromCalendar, syncAllTasks, syncTaskToCalendar } from '@/lib/google-calendar';
@@ -59,7 +60,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
   updateTask: async (id, draft) => {
     const current = get().tasks.find((item) => item.id === id);
-    if (!current) throw new Error('This task is no longer on this device.');
+    if (!current) throw new Error(getCopy().taskGoneError);
     const task: Task = {
       ...current,
       title: draft.title,
@@ -132,7 +133,7 @@ async function loadTasks(set: (partial: Partial<TaskState>) => void) {
   } catch (error) {
     set({
       ready: true,
-      error: error instanceof Error ? error.message : 'Could not open the on-device database.',
+      error: error instanceof Error ? error.message : getCopy().couldNotOpenDatabase,
     });
   }
 }
