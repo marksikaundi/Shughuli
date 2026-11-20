@@ -8,7 +8,7 @@ import { useCopy } from '@/lib/settings-copy';
 
 const ICONS: Record<string, IconName> = {
   index: 'home',
-  projects: 'check',
+  projects: 'todo',
   calendar: 'calendar',
   settings: 'settings',
 };
