@@ -1,6 +1,6 @@
-import { getLocales, type Locale } from 'expo-localization';
 import { I18nManager } from 'react-native';
 
+import { readDeviceLocales, type DeviceLocale } from '@/i18n/device-locale';
 import { isRtlLanguage, isSelectableLanguage } from '@/i18n/languages';
 import { en, sw, type SettingsCopy } from '@/i18n/messages';
 import { overlays } from '@/i18n/packs';
@@ -28,17 +28,7 @@ type Resolved = {
   messages: SettingsCopy;
 };
 
-function readLocales(): Locale[] {
-  try {
-    const locales = getLocales();
-    if (locales.length > 0) return locales;
-  } catch {
-    // Locale data can be missing for a moment while the native module starts.
-  }
-  return [{ languageTag: 'en', languageCode: 'en', textDirection: 'ltr' } as Locale];
-}
-
-function matchCatalog(locale: Locale): string | null {
+function matchCatalog(locale: DeviceLocale): string | null {
   const raw = (locale.languageCode || '').toLowerCase();
   const code = ALIASES[raw] ?? raw;
   if (!code) return null;
@@ -85,7 +75,7 @@ function formattingTag(catalog: string, deviceTag: string) {
   return catalog;
 }
 
-export function resolveLanguage(choice: string, locales = readLocales()): Resolved {
+export function resolveLanguage(choice: string, locales = readDeviceLocales()): Resolved {
   const device = locales[0];
   const deviceTag = device?.languageTag || 'en';
   const explicit = choice !== 'system' && (choice === 'en' || isSelectableLanguage(choice));
@@ -120,7 +110,7 @@ export function resolveLanguage(choice: string, locales = readLocales()): Resolv
 
 let current = resolveLanguage('system');
 
-export function publishLanguage(choice: string, locales?: Locale[]) {
+export function publishLanguage(choice: string, locales?: DeviceLocale[]) {
   current = resolveLanguage(choice, locales);
   return current;
 }
@@ -181,7 +171,7 @@ export function languageEndonym(code: string) {
 }
 
 export function deviceLanguageLabel() {
-  const locales = readLocales();
+  const locales = readDeviceLocales();
   for (const locale of locales) {
     const code = locale.languageCode;
     if (!code) continue;
