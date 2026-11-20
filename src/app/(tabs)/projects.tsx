@@ -1,55 +1,85 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/empty-state';
-import { Icon, IconButton } from '@/components/icon';
+import { Icon } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
-import { useProjects } from '@/data/projects';
-import { useTasks, type Task } from '@/data/tasks';
+import { formatDate, toDateKey, useTasks, type Task } from '@/data/tasks';
 import { countPhrase, fill, useCopy } from '@/lib/settings-copy';
+import { usePreferencesStore } from '@/store/preferences';
 
-type Board = 'all' | 'active' | 'done';
+type List = 'open' | 'done' | 'all';
 
-const BOARDS: Board[] = ['active', 'all', 'done'];
+const LISTS: List[] = ['open', 'done', 'all'];
 
-export default function ProjectsScreen() {
+export default function TodoScreen() {
   const text = useCopy();
   const insets = useSafeAreaInsets();
-  const { tasks } = useTasks();
-  const { projects: saved } = useProjects();
-  const [board, setBoard] = useState<Board>('active');
+  const { tasks, addTask, setTaskStatus } = useTasks();
+  const defaultPriority = usePreferencesStore((state) => state.prefs.defaultPriority);
+  const planningStart = usePreferencesStore((state) => state.prefs.planningStart);
+  const dateFormat = usePreferencesStore((state) => state.prefs.dateFormat);
+  const [list, setList] = useState<List>('open');
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const today = toDateKey(new Date());
 
-  const projects = useMemo(() => {
-    return saved.map((project) => {
-      const items = tasks
-        .filter((task) => task.kind === 'task' && task.project.trim().toLowerCase() === project.name.toLowerCase())
-        .sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
-      const done = items.filter((task) => task.status === 'done').length;
-      const upcoming = items.filter((task) => task.status !== 'done').slice(0, 3);
-      return {
-        id: project.id,
-        name: project.name,
-        open: items.length - done,
-        done,
-        total: items.length,
-        upcoming,
-      };
-    });
-  }, [saved, tasks]);
-
-  const openTasks = projects.reduce((sum, project) => sum + project.open, 0);
-  const visible = projects.filter((project) => {
-    if (board === 'active') return project.total === 0 || project.open > 0;
-    if (board === 'done') return project.total > 0 && project.open === 0;
+  const todos = useMemo(
+    () => tasks.filter((task) => task.kind === 'task').sort(bySchedule),
+    [tasks],
+  );
+  const openCount = todos.filter((task) => task.status !== 'done').length;
+  const visible = todos.filter((task) => {
+    if (list === 'open') return task.status !== 'done';
+    if (list === 'done') return task.status === 'done';
     return true;
   });
+
+  async function addTodo() {
+    const title = draft.trim();
+    if (!title || saving) {
+      if (!title) Alert.alert(text.todo, text.addTaskTitleError);
+      return;
+    }
+    setSaving(true);
+    try {
+      await addTask({
+        title,
+        description: '',
+        date: today,
+        start: planningStart,
+        priority: defaultPriority,
+        project: '',
+        tags: [],
+      });
+      setDraft('');
+    } catch (error) {
+      Alert.alert(text.todo, error instanceof Error ? error.message : text.couldNotSaveTask);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggle(task: Task) {
+    if (pendingId) return;
+    setPendingId(task.id);
+    try {
+      await setTaskStatus(task.id, task.status === 'done' ? 'todo' : 'done');
+    } catch (error) {
+      Alert.alert(text.todo, error instanceof Error ? error.message : text.couldNotSaveTask);
+    } finally {
+      setPendingId(null);
+    }
+  }
 
   return (
     <Screen>
       <ScrollView
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top + 8,
@@ -57,55 +87,54 @@ export default function ProjectsScreen() {
           paddingHorizontal: Layout.padding,
         }}>
         <View style={styles.header}>
-          <View style={styles.headerCopy}>
-            <Text style={styles.title}>{text.tabProjects}</Text>
-            {projects.length > 0 ? (
-              <Text style={styles.subtitle}>
-                {countPhrase(projects.length, {
-                  one: text.projectOne,
-                  few: text.projectFew,
-                  many: text.projectMany,
-                  other: text.projectOther,
-                })}
-                {' · '}
-                {countPhrase(openTasks, {
-                  one: text.openOne,
-                  few: text.openFew,
-                  many: text.openMany,
-                  other: text.openOther,
-                })}
-              </Text>
-            ) : null}
-          </View>
-          <IconButton
-            icon="plus"
-            variant="dark"
-            accessibilityLabel={text.addProject}
-            onPress={() => router.push('/add-project')}
-          />
+          <Text style={styles.title}>{text.todo}</Text>
+          {todos.length > 0 ? (
+            <Text style={styles.subtitle}>
+              {countPhrase(openCount, {
+                one: text.openOne,
+                few: text.openFew,
+                many: text.openMany,
+                other: text.openOther,
+              })}
+            </Text>
+          ) : null}
         </View>
 
-        {projects.length === 0 ? (
-          <EmptyState
-            icon="folder"
-            title={text.noProjectsTitle}
-            body={text.noProjectsBody}
-            actionLabel={text.newProject}
-            onAction={() => router.push('/add-project')}
-            style={styles.empty}
+        <View style={styles.composer}>
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            onSubmitEditing={() => void addTodo()}
+            placeholder={text.taskTitlePlaceholder}
+            placeholderTextColor={Palette.faint}
+            returnKeyType="done"
+            editable={!saving}
+            style={styles.input}
           />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={text.addTask}
+            disabled={saving}
+            onPress={() => void addTodo()}
+            style={({ pressed }) => [styles.add, pressed && styles.pressed, saving && styles.disabled]}>
+            <Icon name="plus" size={18} color={Palette.white} />
+          </Pressable>
+        </View>
+
+        {todos.length === 0 ? (
+          <EmptyState icon="check" title={text.noTasksYet} body={text.noTasksBody} style={styles.empty} />
         ) : (
           <>
             <View style={styles.segment}>
-              {BOARDS.map((id) => {
-                const selected = board === id;
-                const label = id === 'active' ? text.active : id === 'done' ? text.done : text.all;
+              {LISTS.map((id) => {
+                const selected = list === id;
+                const label = id === 'open' ? text.todo : id === 'done' ? text.done : text.all;
                 return (
                   <Pressable
                     key={id}
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
-                    onPress={() => setBoard(id)}
+                    onPress={() => setList(id)}
                     style={[styles.segmentItem, selected && styles.segmentItemOn]}>
                     <Text style={[styles.segmentText, selected && styles.segmentTextOn]}>{label}</Text>
                   </Pressable>
@@ -116,16 +145,41 @@ export default function ProjectsScreen() {
             {visible.length === 0 ? (
               <EmptyState
                 compact
-                icon="folder"
-                title={board === 'done' ? text.nothingFinishedTitle : text.noActiveProjectsTitle}
-                body={board === 'done' ? text.nothingFinishedBody : text.noActiveProjectsBody}
+                icon="check"
+                title={list === 'done' ? text.nothingFinishedTitle : text.allDone}
+                body={list === 'done' ? text.nothingFinishedBody : text.noTasksBody}
                 style={styles.empty}
               />
             ) : (
               <View style={styles.list}>
-                {visible.map((project) => (
-                  <ProjectCard key={project.id} text={text} project={project} />
-                ))}
+                {visible.map((task, index) => {
+                  const done = task.status === 'done';
+                  const when = task.date === today ? text.today : formatDate(dateFromKey(task.date), dateFormat);
+                  return (
+                    <View key={task.id} style={[styles.row, index > 0 && styles.rowLine]}>
+                      <Pressable
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: done, disabled: pendingId === task.id }}
+                        accessibilityLabel={task.title}
+                        disabled={pendingId === task.id}
+                        onPress={() => void toggle(task)}
+                        hitSlop={8}
+                        style={[styles.box, done && styles.boxOn]}>
+                        {done ? <Icon name="check" size={14} color={Palette.white} /> : null}
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={fill(text.editNamed, { name: task.title })}
+                        onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
+                        style={styles.copy}>
+                        <Text style={[styles.taskTitle, done && styles.taskDone]} numberOfLines={2}>
+                          {task.title}
+                        </Text>
+                        <Text style={styles.when}>{when}</Text>
+                      </Pressable>
+                    </View>
+                  );
+                })}
               </View>
             )}
           </>
@@ -135,77 +189,19 @@ export default function ProjectsScreen() {
   );
 }
 
-function ProjectCard({
-  text,
-  project,
-}: {
-  text: ReturnType<typeof useCopy>;
-  project: {
-    id: string;
-    name: string;
-    open: number;
-    done: number;
-    total: number;
-    upcoming: Task[];
-  };
-}) {
-  const progress = project.total === 0 ? 0 : project.done / project.total;
-  const status =
-    project.total === 0 ? text.noTasksYet : project.open === 0 ? text.allDone : fill(text.openDone, { open: project.open, done: project.done });
+function bySchedule(a: Task, b: Task) {
+  const aDone = a.status === 'done' ? 1 : 0;
+  const bDone = b.status === 'done' ? 1 : 0;
+  return aDone - bDone || a.date.localeCompare(b.date) || a.start.localeCompare(b.start) || a.title.localeCompare(b.title);
+}
 
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardTop}>
-        <Text style={styles.name} numberOfLines={2}>
-          {project.name}
-        </Text>
-        <Text style={styles.percent}>{Math.round(progress * 100)}%</Text>
-      </View>
-      <Text style={styles.status}>{status}</Text>
-      <View style={styles.track}>
-        <View style={[styles.fill, { width: `${progress * 100}%` }]} />
-      </View>
-
-      {project.upcoming.length > 0 ? (
-        <View style={styles.tasks}>
-          {project.upcoming.map((task) => (
-            <Pressable
-              key={task.id}
-              accessibilityRole="button"
-              accessibilityLabel={fill(text.editNamed, { name: task.title })}
-              onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
-              style={({ pressed }) => [styles.task, pressed && styles.pressed]}>
-              <View style={styles.mark} />
-              <Text style={styles.taskTitle} numberOfLines={1}>
-                {task.title}
-              </Text>
-              <Icon name="chevron" size={14} color={Palette.faint} />
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={fill(text.addTaskTo, { name: project.name })}
-        onPress={() => router.push({ pathname: '/add-task', params: { project: project.name } })}
-        style={({ pressed }) => [styles.add, pressed && styles.pressed]}>
-        <Icon name="plus" size={14} color={Palette.ink} />
-        <Text style={styles.addText}>{text.addTask}</Text>
-      </Pressable>
-    </View>
-  );
+function dateFromKey(key: string) {
+  const [year, month, day] = key.split('-').map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
 }
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  headerCopy: {
-    flex: 1,
     paddingTop: 4,
   },
   title: {
@@ -220,11 +216,37 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 600,
   },
+  composer: {
+    marginTop: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Palette.white,
+    borderRadius: 20,
+    padding: 6,
+    paddingLeft: 16,
+    ...cardShadow,
+  },
+  input: {
+    flex: 1,
+    minHeight: 44,
+    color: Palette.ink,
+    fontSize: 16,
+    fontWeight: 600,
+  },
+  add: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: Palette.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   empty: {
     marginTop: 22,
   },
   segment: {
-    marginTop: 22,
+    marginTop: 16,
     flexDirection: 'row',
     backgroundColor: Palette.white,
     borderRadius: 18,
@@ -253,89 +275,57 @@ const styles = StyleSheet.create({
   },
   list: {
     marginTop: 16,
-    gap: 12,
-  },
-  card: {
     backgroundColor: Palette.white,
     borderRadius: 24,
-    padding: 16,
+    paddingHorizontal: 16,
     ...cardShadow,
   },
-  cardTop: {
+  row: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    alignItems: 'center',
     gap: 12,
+    minHeight: 64,
   },
-  name: {
+  rowLine: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.line,
+  },
+  box: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: Palette.faint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  boxOn: {
+    backgroundColor: Palette.ink,
+    borderColor: Palette.ink,
+  },
+  copy: {
     flex: 1,
-    color: Palette.ink,
-    fontSize: 20,
-    fontWeight: 700,
-    letterSpacing: -0.4,
+    paddingVertical: 12,
   },
-  percent: {
+  taskTitle: {
     color: Palette.ink,
     fontSize: 16,
     fontWeight: 700,
   },
-  status: {
-    marginTop: 4,
+  taskDone: {
+    color: Palette.muted,
+    textDecorationLine: 'line-through',
+  },
+  when: {
+    marginTop: 2,
     color: Palette.muted,
     fontSize: 13,
     fontWeight: 600,
   },
-  track: {
-    marginTop: 14,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#F1F1F4',
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: Palette.ink,
-  },
-  tasks: {
-    marginTop: 8,
-  },
-  task: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    minHeight: 40,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Palette.line,
-  },
-  mark: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    borderColor: Palette.faint,
-  },
-  taskTitle: {
-    flex: 1,
-    color: Palette.ink,
-    fontSize: 15,
-    fontWeight: 600,
-  },
-  add: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 36,
-    paddingHorizontal: 2,
-  },
-  addText: {
-    color: Palette.ink,
-    fontSize: 14,
-    fontWeight: 700,
-  },
   pressed: {
-    opacity: 0.7,
+    opacity: 0.75,
+  },
+  disabled: {
+    opacity: 0.5,
   },
 });

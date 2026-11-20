@@ -33,6 +33,7 @@ type TaskState = {
   hydrate: () => Promise<void>;
   addTask: (draft: TaskDraft) => Promise<void>;
   updateTask: (id: string, draft: TaskDraft) => Promise<void>;
+  setTaskStatus: (id: string, status: TaskStatus) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   clearTasks: () => Promise<void>;
   replaceTasks: (tasks: Task[]) => Promise<void>;
@@ -72,6 +73,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       project: draft.project,
       tags: draft.tags,
     };
+    await persistTask(task, 'update');
+    set({ tasks: get().tasks.map((item) => (item.id === id ? task : item)) });
+  },
+  setTaskStatus: async (id, status) => {
+    const current = get().tasks.find((item) => item.id === id);
+    if (!current) throw new Error(getCopy().taskGoneError);
+    if (current.status === status) return;
+    const task = { ...current, status };
     await persistTask(task, 'update');
     set({ tasks: get().tasks.map((item) => (item.id === id ? task : item)) });
   },
@@ -120,8 +129,9 @@ export function useTasks() {
   const tasks = useTaskStore((state) => state.tasks);
   const addTask = useTaskStore((state) => state.addTask);
   const updateTask = useTaskStore((state) => state.updateTask);
+  const setTaskStatus = useTaskStore((state) => state.setTaskStatus);
   const deleteTask = useTaskStore((state) => state.deleteTask);
-  return { tasks, addTask, updateTask, deleteTask };
+  return { tasks, addTask, updateTask, setTaskStatus, deleteTask };
 }
 
 async function loadTasks(set: (partial: Partial<TaskState>) => void) {
