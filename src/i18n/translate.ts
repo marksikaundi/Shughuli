@@ -1,7 +1,7 @@
 import { getLocales, type Locale } from 'expo-localization';
 import { I18nManager } from 'react-native';
 
-import { isRtlLanguage } from '@/i18n/languages';
+import { isRtlLanguage, isSelectableLanguage } from '@/i18n/languages';
 import { en, sw, type SettingsCopy } from '@/i18n/messages';
 import { overlays } from '@/i18n/packs';
 
@@ -88,7 +88,7 @@ function formattingTag(catalog: string, deviceTag: string) {
 export function resolveLanguage(choice: string, locales = readLocales()): Resolved {
   const device = locales[0];
   const deviceTag = device?.languageTag || 'en';
-  const explicit = choice !== 'system' && (choice === 'en' || Boolean(catalogs[choice]));
+  const explicit = choice !== 'system' && (choice === 'en' || isSelectableLanguage(choice));
   if (explicit) {
     return {
       catalog: choice,
