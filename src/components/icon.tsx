@@ -25,6 +25,7 @@ const ICONS = {
   starFill: { ios: 'star.fill', android: 'star', web: 'star' },
   sun: { ios: 'sun.max.fill', android: 'sunny', web: 'sunny' },
   arrow: { ios: 'arrow.up.right', android: 'north_east', web: 'north_east' },
+  forward: { ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' },
   video: { ios: 'video.fill', android: 'video_call', web: 'video_call' },
   folder: { ios: 'folder.fill', android: 'folder', web: 'folder' },
   tag: { ios: 'tag.fill', android: 'sell', web: 'sell' },

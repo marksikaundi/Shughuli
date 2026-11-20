@@ -1,180 +1,201 @@
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { EmptyState } from '@/components/empty-state';
 import { Icon, IconButton } from '@/components/icon';
-import { ProgressRing } from '@/components/progress-ring';
 import { Screen } from '@/components/screen';
-import { TaskCard } from '@/components/task-card';
-import { Layout, Palette, cardShadow } from '@/constants/palette';
-import { toDateKey, useTasks, type TaskStatus } from '@/data/tasks';
-import { accentById } from '@/data/preferences';
+import { TaskSummaryCard } from '@/components/task-summary-card';
+import { Layout, Palette } from '@/constants/palette';
+import { PEOPLE, type PersonId } from '@/data/people';
+import { useProjects } from '@/data/projects';
+import { useTasks, type Task } from '@/data/tasks';
+import { formatLocale } from '@/i18n/format';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
-const FILTERS: Exclude<TaskStatus, 'done'>[] = ['todo', 'in_progress', 'in_review'];
+const TILES = ['#E7F6EE', '#E7F1FA', '#FBF6D8', '#F6E8F4'];
 
 export default function HomeScreen() {
   const text = useCopy();
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
-  const visibility = usePreferencesStore((state) => state.prefs.completedVisibility);
-  const dailyGoal = usePreferencesStore((state) => state.prefs.dailyGoal);
-  const accent = usePreferencesStore((state) => state.prefs.accent);
-  const [filter, setFilter] = useState<TaskStatus | 'all'>('todo');
-  const today = toDateKey(new Date());
+  const { projects } = useProjects();
+  const displayName = usePreferencesStore((state) => state.prefs.displayName).trim();
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? text.goodMorning : hour < 17 ? text.goodAfternoon : text.goodEvening;
+  const hello = displayName ? `${greeting}, ${displayName}` : greeting;
+  const dateLine = formatLocale(new Date(), { weekday: 'long', month: 'long', day: 'numeric' });
 
-  const todayTasks = useMemo(
-    () => tasks.filter((task) => task.date === today && task.kind === 'task'),
-    [tasks, today],
-  );
-  const todaysTasks = useMemo(
-    () => todayTasks.filter((task) => task.status !== 'done'),
-    [todayTasks],
-  );
-  const completed = todayTasks.length - todaysTasks.length;
-  const progress = dailyGoal <= 0 ? 0 : Math.min(1, completed / dailyGoal);
+  const tiles = useMemo(() => {
+    return projects.map((project) => {
+      const items = tasks
+        .filter((task) => task.project.trim().toLowerCase() === project.name.trim().toLowerCase())
+        .sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
+      const done = items.filter((task) => task.status === 'done').length;
+      const focus = items.find((task) => task.status !== 'done') ?? items[0];
+      const people = [...new Set(items.flatMap((task) => task.people))].slice(0, 3);
+      return { id: project.id, name: project.name, done, total: items.length, focus, people };
+    });
+  }, [projects, tasks]);
 
-  const counts = useMemo(() => {
-    return {
-      todo: todayTasks.filter((task) => task.status === 'todo').length,
-      in_progress: todayTasks.filter((task) => task.status === 'in_progress').length,
-      in_review: todayTasks.filter((task) => task.status === 'in_review').length,
-      done: todayTasks.filter((task) => task.status === 'done').length,
-    };
-  }, [todayTasks]);
-
-  const statusLabel: Record<TaskStatus, string> = {
-    todo: text.todo,
-    in_progress: text.inProgress,
-    in_review: text.inReview,
-    done: text.done,
-  };
-  const filterIds: TaskStatus[] = visibility === 'hide' ? [...FILTERS] : [...FILTERS, 'done'];
-  const source = visibility === 'hide' ? todaysTasks : todayTasks;
-  const activeFilter = visibility === 'hide' && filter === 'done' ? 'todo' : filter;
-  const visible = activeFilter === 'all' ? source : source.filter((task) => task.status === activeFilter);
+  const recent = useMemo(() => {
+    return tasks
+      .filter((task) => task.status !== 'done')
+      .sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start))
+      .slice(0, 3);
+  }, [tasks]);
 
   return (
     <Screen>
       <ScrollView
-        style={styles.scroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top + 8,
           paddingBottom: insets.bottom + Layout.tabClearance,
           paddingHorizontal: Layout.padding,
         }}>
-        <View style={styles.topRow}>
-          <Text style={styles.logo}>Shughuli</Text>
-          <View style={styles.actions}>
-            <IconButton
-              icon="plus"
-              variant="dark"
-              accessibilityLabel={text.addTask}
-              onPress={() => router.push('/add-task')}
-            />
-            <IconButton icon="bell" accessibilityLabel={text.settings} onPress={() => router.push('/settings')} />
+        <View style={styles.top}>
+          <View style={styles.hello}>
+            <View style={styles.mark}>
+              <Icon name="grid" size={16} color={Palette.ink} />
+            </View>
+            <View style={styles.helloCopy}>
+              <Text style={styles.greeting} numberOfLines={1}>
+                {hello}
+              </Text>
+              <Text style={styles.date}>{dateLine}</Text>
+            </View>
           </View>
+          <IconButton icon="bell" accessibilityLabel={text.settings} onPress={() => router.push('/settings')} />
         </View>
 
         <Text style={styles.headline}>{text.headline}</Text>
 
-        {tasks.length === 0 ? (
-          <EmptyState
-            title={text.dayOpenTitle}
-            body={text.dayOpenBody}
-            actionLabel={text.addTask}
-            onAction={() => router.push('/add-task')}
-            style={styles.firstEmpty}
-          />
+        <View style={styles.grid}>
+          {tiles.map((tile, index) => (
+            <ProjectTile key={tile.id} tile={tile} color={TILES[index % TILES.length]} />
+          ))}
+          <View style={styles.cell}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={text.addProject}
+              onPress={() => router.push('/add-project')}
+              style={({ pressed }) => [styles.tile, styles.addTile, pressed && styles.pressed]}>
+              <Icon name="plus" size={28} color={Palette.faint} />
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>{text.recentTask}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={text.viewAllTasks} onPress={() => router.push('/tasks')} hitSlop={8}>
+            <Text style={styles.viewAll}>{text.seeAll}</Text>
+          </Pressable>
+        </View>
+
+        {recent.length === 0 ? (
+          <Text style={styles.emptyRecent}>{text.noTasksYet}</Text>
         ) : (
-          <>
-            <View style={styles.progressCard}>
-              <ProgressRing progress={progress} color={accentById(accent).ring} />
-              <View style={styles.stats}>
-                <Stat icon="grid" value={String(todayTasks.length)} label={text.totalTask} />
-                <Stat icon="done" value={String(completed)} label={text.completedTask} />
-                <Stat icon="pending" value={String(todaysTasks.length)} label={text.pendingTask} />
-              </View>
-            </View>
-
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>{text.todaysTasks}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel={text.viewAllTasks} onPress={() => router.push('/tasks')} hitSlop={8}>
-                <Text style={styles.viewAll}>{text.viewAll}</Text>
-              </Pressable>
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filters}
-              style={styles.filterScroll}>
-              {filterIds.map((id) => {
-                const selected = activeFilter === id;
-                return (
-                  <Pressable
-                    key={id}
-                    onPress={() => setFilter(id)}
-                    style={[styles.chip, selected && styles.chipSelected]}>
-                    <Text style={[styles.chipCount, selected && styles.chipCountSelected]}>{counts[id]}</Text>
-                    <Text style={[styles.chipLabel, selected && styles.chipLabelSelected]}>{statusLabel[id]}</Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            <View style={styles.list}>
-              {visible.length === 0 ? (
-                <EmptyState
-                  compact
-                  title={text.nothingInListTitle}
-                  body={text.nothingInListBody}
-                />
-              ) : (
-                visible.map((task) => <TaskCard key={task.id} task={task} />)
-              )}
-            </View>
-          </>
+          <View style={styles.list}>
+            {recent.map((task) => (
+              <TaskSummaryCard key={task.id} task={task} />
+            ))}
+          </View>
         )}
       </ScrollView>
     </Screen>
   );
 }
 
-function Stat({ icon, value, label }: { icon: 'grid' | 'done' | 'pending'; value: string; label: string }) {
+function ProjectTile({
+  tile,
+  color,
+}: {
+  tile: { id: string; name: string; done: number; total: number; focus?: Task; people: PersonId[] };
+  color: string;
+}) {
+  const progress = tile.total === 0 ? 0 : tile.done / tile.total;
   return (
-    <View style={styles.stat}>
-      <View style={styles.statIcon}>
-        <Icon name={icon} size={14} color={Palette.white} />
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={styles.cell}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={tile.name}
+        onPress={() => router.push({ pathname: '/add-task', params: { project: tile.name } })}
+        style={({ pressed }) => [styles.tile, { backgroundColor: color }, pressed && styles.pressed]}>
+        <Text style={styles.project} numberOfLines={2}>
+          {tile.name}
+        </Text>
+        <FaceRow ids={tile.people} />
+        <View style={styles.metaRow}>
+          <Text style={styles.focus} numberOfLines={1}>
+            {tile.focus?.title ?? ' '}
+          </Text>
+          <Text style={styles.count}>
+            {tile.done}/{tile.total}
+          </Text>
+        </View>
+        <View style={styles.track}>
+          <View style={[styles.fill, { width: `${progress * 100}%` }]} />
+        </View>
+      </Pressable>
+    </View>
+  );
+}
+
+function FaceRow({ ids }: { ids: PersonId[] }) {
+  const shown = ids.filter((id) => PEOPLE[id]).slice(0, 3);
+  if (shown.length === 0) return <View style={styles.faceSpace} />;
+  return (
+    <View style={styles.faces}>
+      {shown.map((id, index) => (
+        <View
+          key={id}
+          style={[
+            styles.face,
+            { backgroundColor: PEOPLE[id].color, marginLeft: index === 0 ? 0 : -8, zIndex: shown.length - index },
+          ]}>
+          <Text style={[styles.faceText, { color: PEOPLE[id].text }]}>{PEOPLE[id].initials.slice(0, 1)}</Text>
+        </View>
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-  },
-  topRow: {
+  top: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
   },
-  logo: {
-    color: Palette.ink,
-    fontSize: 28,
-    fontWeight: 700,
-    letterSpacing: -0.7,
-  },
-  actions: {
+  hello: {
+    flex: 1,
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
+  },
+  mark: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: Palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helloCopy: {
+    flex: 1,
+  },
+  greeting: {
+    color: Palette.ink,
+    fontSize: 15,
+    fontWeight: 700,
+  },
+  date: {
+    marginTop: 1,
+    color: Palette.muted,
+    fontSize: 12,
+    fontWeight: 600,
   },
   headline: {
     marginTop: 22,
@@ -182,49 +203,92 @@ const styles = StyleSheet.create({
     fontSize: 34,
     lineHeight: 40,
     fontWeight: 700,
-    letterSpacing: -0.8,
+    letterSpacing: -1,
   },
-  firstEmpty: {
-    marginTop: 28,
-  },
-  progressCard: {
-    marginTop: 20,
-    backgroundColor: Palette.progress,
-    borderRadius: 28,
-    padding: 16,
+  grid: {
+    marginTop: 18,
+    marginHorizontal: -6,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+    flexWrap: 'wrap',
   },
-  stats: {
+  cell: {
+    width: '50%',
+    paddingHorizontal: 6,
+    marginBottom: 12,
+  },
+  tile: {
     flex: 1,
-    gap: 12,
+    minHeight: 160,
+    borderRadius: 22,
+    padding: 14,
+    justifyContent: 'space-between',
   },
-  stat: {
+  addTile: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#D5D0D8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  project: {
+    color: Palette.ink,
+    fontSize: 16,
+    fontWeight: 700,
+    letterSpacing: -0.3,
+  },
+  faces: {
+    flexDirection: 'row',
+    marginTop: 10,
+  },
+  faceSpace: {
+    height: 24,
+    marginTop: 10,
+  },
+  face: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  faceText: {
+    fontSize: 10,
+    fontWeight: 700,
+  },
+  metaRow: {
+    marginTop: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  statIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 9,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  focus: {
+    flex: 1,
+    color: Palette.muted,
+    fontSize: 12,
+    fontWeight: 600,
   },
-  statValue: {
-    color: Palette.white,
-    fontSize: 16,
+  count: {
+    color: Palette.muted,
+    fontSize: 12,
     fontWeight: 700,
   },
-  statLabel: {
-    color: '#C8C8CC',
-    fontSize: 13,
-    flexShrink: 1,
+  track: {
+    marginTop: 8,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(22,22,22,0.08)',
+    overflow: 'hidden',
+  },
+  fill: {
+    height: '100%',
+    borderRadius: 2,
+    backgroundColor: Palette.ink,
   },
   sectionRow: {
-    marginTop: 26,
+    marginTop: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -239,47 +303,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 600,
   },
-  filterScroll: {
+  list: {
     marginTop: 14,
-    marginHorizontal: -Layout.padding,
+    gap: 12,
   },
-  filters: {
-    paddingHorizontal: Layout.padding,
-    gap: 10,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Palette.white,
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    ...cardShadow,
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-  },
-  chipSelected: {
-    backgroundColor: Palette.limeChip,
-  },
-  chipCount: {
-    color: Palette.ink,
-    fontSize: 14,
-    fontWeight: 700,
-  },
-  chipCountSelected: {
-    color: Palette.ink,
-  },
-  chipLabel: {
+  emptyRecent: {
+    marginTop: 14,
     color: Palette.muted,
     fontSize: 14,
     fontWeight: 600,
   },
-  chipLabelSelected: {
-    color: Palette.ink,
-  },
-  list: {
-    marginTop: 16,
-    gap: 12,
+  pressed: {
+    opacity: 0.84,
   },
 });

@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/empty-state';
 import { Icon, IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
-import { Layout, Palette, cardShadow } from '@/constants/palette';
+import { Layout, Palette } from '@/constants/palette';
 import { accentById } from '@/data/preferences';
 import {
   formatClock,
@@ -123,18 +123,9 @@ export default function CalendarScreen() {
         }}>
         <View style={styles.header}>
           <IconButton icon="back" accessibilityLabel={text.backHome} onPress={() => router.navigate('/')} />
-          <View style={styles.headerActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={googleAccount ? fill(text.syncGoogle, { account: googleAccount }) : text.connectGoogle}
-              disabled={connecting}
-              onPress={() => void connectCalendar()}
-              style={({ pressed }) => [styles.google, (pressed || connecting) && styles.googlePressed]}>
-              <GoogleMark />
-            </Pressable>
-          </View>
+          <IconButton icon="bell" accessibilityLabel={text.settings} onPress={() => router.push('/settings')} />
           <View pointerEvents="none" style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>{text.taskSchedule.replace(/\n/g, ' ')}</Text>
+            <Text style={styles.headerTitle}>{text.schedule}</Text>
           </View>
         </View>
 
@@ -152,6 +143,18 @@ export default function CalendarScreen() {
             );
           })}
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={googleAccount ? fill(text.syncGoogle, { account: googleAccount }) : text.connectGoogle}
+          disabled={connecting}
+          onPress={() => void connectCalendar()}
+          style={({ pressed }) => [styles.googleLink, (pressed || connecting) && styles.pressed]}>
+          <GoogleMark />
+          <Text style={styles.googleLinkText} numberOfLines={1}>
+            {googleAccount ? fill(text.syncGoogle, { account: googleAccount }) : text.connectGoogle}
+          </Text>
+        </Pressable>
 
         {timeline.length === 0 ? (
           <EmptyState
@@ -347,25 +350,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerActions: {
+  googleLink: {
+    marginTop: 16,
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  google: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: Palette.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...cardShadow,
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  googlePressed: {
-    opacity: 0.72,
+  googleLinkText: {
+    color: Palette.muted,
+    fontSize: 13,
+    fontWeight: 600,
   },
   headerTitleWrap: {
     ...StyleSheet.absoluteFill,
