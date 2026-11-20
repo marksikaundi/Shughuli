@@ -10,9 +10,7 @@ import { Layout, Palette } from '@/constants/palette';
 import { PEOPLE, type PersonId } from '@/data/people';
 import { useProjects } from '@/data/projects';
 import { useTasks, type Task } from '@/data/tasks';
-import { formatLocale } from '@/i18n/format';
 import { useCopy } from '@/lib/settings-copy';
-import { usePreferencesStore } from '@/store/preferences';
 
 const TILES = ['#E7F6EE', '#E7F1FA', '#FBF6D8', '#F6E8F4'];
 
@@ -21,11 +19,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { tasks } = useTasks();
   const { projects } = useProjects();
-  const displayName = usePreferencesStore((state) => state.prefs.displayName).trim();
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? text.goodMorning : hour < 17 ? text.goodAfternoon : text.goodEvening;
-  const hello = displayName ? `${greeting}, ${displayName}` : greeting;
-  const dateLine = formatLocale(new Date(), { weekday: 'long', month: 'long', day: 'numeric' });
 
   const tiles = useMemo(() => {
     return projects.map((project) => {
@@ -56,17 +49,7 @@ export default function HomeScreen() {
           paddingHorizontal: Layout.padding,
         }}>
         <View style={styles.top}>
-          <View style={styles.hello}>
-            <View style={styles.mark}>
-              <Icon name="grid" size={16} color={Palette.ink} />
-            </View>
-            <View style={styles.helloCopy}>
-              <Text style={styles.greeting} numberOfLines={1}>
-                {hello}
-              </Text>
-              <Text style={styles.date}>{dateLine}</Text>
-            </View>
-          </View>
+          <Text style={styles.logo}>Shughuli</Text>
           <IconButton icon="bell" accessibilityLabel={text.settings} onPress={() => router.push('/settings')} />
         </View>
 
@@ -169,33 +152,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  hello: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  mark: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: Palette.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  helloCopy: {
-    flex: 1,
-  },
-  greeting: {
+  logo: {
     color: Palette.ink,
-    fontSize: 15,
+    fontSize: 28,
     fontWeight: 700,
-  },
-  date: {
-    marginTop: 1,
-    color: Palette.muted,
-    fontSize: 12,
-    fontWeight: 600,
+    letterSpacing: -0.7,
   },
   headline: {
     marginTop: 22,
