@@ -19,7 +19,7 @@ export default function AppearanceScreen() {
 
   return (
     <SettingsPage title={text.appearance}>
-      <SettingsSection footer={text.themeHint}>
+      <SettingsSection footer={`${text.themeHint}\n\n${text.languageFoot}`}>
         <View style={settingsStyles.block}>
           <ChoiceChips
             value={prefs.theme}

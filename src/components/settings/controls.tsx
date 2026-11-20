@@ -149,6 +149,7 @@ export function StepperRow({
   display?: string;
 }) {
   const { colors, scale } = useSettingsTheme();
+  const text = useCopy();
   return (
     <SettingsRow
       icon={icon}
@@ -156,16 +157,16 @@ export function StepperRow({
       border={border}
       trailing={
         <View style={styles.stepper}>
-          <StepButton label="Decrease" disabled={value <= min} onPress={() => onChange(Math.max(min, value - step))} />
+          <StepButton label={text.decrease} glyph="−" disabled={value <= min} onPress={() => onChange(Math.max(min, value - step))} />
           <Text style={[styles.stepValue, { color: colors.ink, fontSize: 14 * scale }]}>{display ?? `${value}${unit ? ` ${unit}` : ''}`}</Text>
-          <StepButton label="Increase" disabled={value >= max} onPress={() => onChange(Math.min(max, value + step))} />
+          <StepButton label={text.increase} glyph="+" disabled={value >= max} onPress={() => onChange(Math.min(max, value + step))} />
         </View>
       }
     />
   );
 }
 
-function StepButton({ label, disabled, onPress }: { label: string; disabled: boolean; onPress: () => void }) {
+function StepButton({ label, glyph, disabled, onPress }: { label: string; glyph: string; disabled: boolean; onPress: () => void }) {
   const { colors } = useSettingsTheme();
   return (
     <Pressable
@@ -174,7 +175,7 @@ function StepButton({ label, disabled, onPress }: { label: string; disabled: boo
       disabled={disabled}
       onPress={onPress}
       style={[styles.stepButton, { backgroundColor: colors.icon }, disabled && styles.disabled]}>
-      <Text style={{ color: colors.ink, fontSize: 18, fontWeight: 700 }}>{label === 'Increase' ? '+' : '−'}</Text>
+      <Text style={{ color: colors.ink, fontSize: 18, fontWeight: 700 }}>{glyph}</Text>
     </Pressable>
   );
 }
