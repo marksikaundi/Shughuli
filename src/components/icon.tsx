@@ -14,7 +14,7 @@ const ICONS = {
   more: { ios: 'ellipsis', android: 'more_horiz', web: 'more_horiz' },
   close: { ios: 'xmark', android: 'close', web: 'close' },
   check: { ios: 'checkmark', android: 'check', web: 'check' },
-  todo: { ios: 'list.bullet', android: 'format_list_bulleted', web: 'format_list_bulleted' },
+  todo: { ios: 'list.clipboard.fill', android: 'assignment', web: 'assignment' },
   clock: { ios: 'clock', android: 'schedule', web: 'schedule' },
   grid: { ios: 'square.grid.2x2', android: 'grid_view', web: 'grid_view' },
   done: { ios: 'checkmark.circle', android: 'task_alt', web: 'task_alt' },
