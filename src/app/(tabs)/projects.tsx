@@ -1,82 +1,46 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/empty-state';
 import { Icon } from '@/components/icon';
 import { Screen } from '@/components/screen';
-import { Layout, Palette, cardShadow } from '@/constants/palette';
+import { Layout, Palette } from '@/constants/palette';
 import { accentById } from '@/data/preferences';
-import { toDateKey, useTasks, type Priority, type Task } from '@/data/tasks';
-import { formatScheduleDay } from '@/i18n/format';
+import { formatClock, toDateKey, useTasks, type Task } from '@/data/tasks';
+import { formatLocale, formatScheduleDay } from '@/i18n/format';
 import { fill, useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
-
-type List = 'open' | 'done' | 'all';
-
-const LISTS: List[] = ['open', 'done', 'all'];
-
-const PRIORITY_COLOR: Record<Priority, string> = {
-  high: Palette.high,
-  medium: Palette.medium,
-  low: Palette.low,
-};
 
 export default function TodoScreen() {
   const text = useCopy();
   const insets = useSafeAreaInsets();
-  const { tasks, addTask, setTaskStatus } = useTasks();
-  const defaultPriority = usePreferencesStore((state) => state.prefs.defaultPriority);
-  const planningStart = usePreferencesStore((state) => state.prefs.planningStart);
+  const { tasks, setTaskStatus } = useTasks();
+  const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
   const accent = accentById(usePreferencesStore((state) => state.prefs.accent));
   const markColor = inkOn(accent.color);
-  const [list, setList] = useState<List>('open');
-  const [draft, setDraft] = useState('');
-  const [saving, setSaving] = useState(false);
+  const tint = `${accent.color}24`;
+  const [closed, setClosed] = useState<Record<string, boolean>>({});
   const [pendingId, setPendingId] = useState<string | null>(null);
   const today = toDateKey(new Date());
   const tomorrow = shiftDate(today, 1);
   const yesterday = shiftDate(today, -1);
+  const heroDate = formatLocale(dateFromKey(today), { day: 'numeric', month: 'long', year: 'numeric' });
 
-  const todos = useMemo(() => tasks.filter((task) => task.kind === 'task').sort(bySchedule), [tasks]);
-  const openCount = todos.filter((task) => task.status !== 'done').length;
-  const doneCount = todos.length - openCount;
-  const progress = todos.length === 0 ? 0 : doneCount / todos.length;
-  const visible = todos.filter((task) => {
-    if (list === 'open') return task.status !== 'done';
-    if (list === 'done') return task.status === 'done';
-    return true;
-  });
-  const sections = useMemo(
-    () => groupTodos(visible, { today, tomorrow, yesterday, todayLabel: text.today, tomorrowLabel: text.tomorrow, yesterdayLabel: text.yesterday }),
-    [visible, today, tomorrow, yesterday, text.today, text.tomorrow, text.yesterday],
-  );
+  const sections = useMemo(() => {
+    const todos = tasks.filter((task) => task.kind === 'task');
+    return groupByDay(todos, {
+      today,
+      tomorrow,
+      yesterday,
+      todayLabel: text.today,
+      tomorrowLabel: text.tomorrow,
+      yesterdayLabel: text.yesterday,
+    });
+  }, [tasks, today, tomorrow, yesterday, text.today, text.tomorrow, text.yesterday]);
 
-  async function addTodo() {
-    const title = draft.trim();
-    if (!title || saving) {
-      if (!title) Alert.alert(text.todo, text.addTaskTitleError);
-      return;
-    }
-    setSaving(true);
-    try {
-      await addTask({
-        title,
-        description: '',
-        date: today,
-        start: planningStart,
-        priority: defaultPriority,
-        project: '',
-        tags: [],
-      });
-      setDraft('');
-    } catch (error) {
-      Alert.alert(text.todo, error instanceof Error ? error.message : text.couldNotSaveTask);
-    } finally {
-      setSaving(false);
-    }
-  }
+  const featuredId = sections.find((section) => section.key === today)?.items.find((task) => task.status !== 'done')?.id;
 
   async function toggle(task: Task) {
     if (pendingId) return;
@@ -93,128 +57,83 @@ export default function TodoScreen() {
   return (
     <Screen>
       <ScrollView
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: insets.top + 12,
+          paddingTop: insets.top + 18,
           paddingBottom: insets.bottom + Layout.tabClearance,
           paddingHorizontal: Layout.padding,
         }}>
-        <Text style={styles.title}>{text.todo}</Text>
+        <Text style={styles.kicker}>{text.today},</Text>
+        <Text style={styles.date}>{heroDate}</Text>
 
-        <View style={styles.summary}>
-          <View style={styles.summaryRow}>
-            <View>
-              <Text style={styles.summaryValue}>{openCount}</Text>
-              <Text style={styles.summaryLabel}>{text.pendingTask}</Text>
-            </View>
-            <View style={styles.summaryDone}>
-              <Text style={styles.summaryValue}>{doneCount}</Text>
-              <Text style={styles.summaryLabel}>{text.completedTask}</Text>
-            </View>
-          </View>
-          <View style={styles.track}>
-            <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: accent.color }]} />
-          </View>
-        </View>
-
-        <View style={styles.composer}>
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            onSubmitEditing={() => void addTodo()}
-            placeholder={text.taskTitlePlaceholder}
-            placeholderTextColor={Palette.faint}
-            returnKeyType="done"
-            editable={!saving}
-            style={styles.input}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={text.addTask}
-            disabled={saving}
-            onPress={() => void addTodo()}
-            style={({ pressed }) => [
-              styles.add,
-              { backgroundColor: accent.color },
-              pressed && styles.pressed,
-              saving && styles.disabled,
-            ]}>
-            <Icon name="plus" size={20} color={markColor} />
-          </Pressable>
-        </View>
-
-        <View style={styles.filters}>
-          {LISTS.map((id) => {
-            const selected = list === id;
-            const label = id === 'open' ? text.todo : id === 'done' ? text.done : text.all;
-            const count = id === 'open' ? openCount : id === 'done' ? doneCount : todos.length;
-            return (
-              <Pressable
-                key={id}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                onPress={() => setList(id)}
-                style={[styles.chip, selected && styles.chipOn]}>
-                <Text style={[styles.chipText, selected && styles.chipTextOn]}>{label}</Text>
-                <Text style={[styles.chipCount, selected && styles.chipTextOn]}>{count}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {todos.length === 0 ? (
+        {sections.length === 0 ? (
           <EmptyState icon="check" title={text.noTasksYet} body={text.noTasksBody} style={styles.empty} />
-        ) : visible.length === 0 ? (
-          <EmptyState
-            compact
-            icon="check"
-            title={list === 'done' ? text.nothingFinishedTitle : text.allDone}
-            body={list === 'done' ? text.nothingFinishedBody : text.noTasksBody}
-            style={styles.empty}
-          />
         ) : (
-          sections.map((section) => (
-            <View key={section.key} style={styles.section}>
-              <Text style={styles.sectionTitle}>{section.label}</Text>
-              <View style={styles.stack}>
-                {section.items.map((task) => {
-                  const done = task.status === 'done';
-                  return (
-                    <View key={task.id} style={[styles.card, done && styles.cardDone]}>
-                      <View style={[styles.stripe, { backgroundColor: PRIORITY_COLOR[task.priority] }]} />
-                      <Pressable
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked: done, disabled: pendingId === task.id }}
-                        accessibilityLabel={task.title}
-                        disabled={pendingId === task.id}
-                        onPress={() => void toggle(task)}
-                        hitSlop={8}
-                        style={[styles.box, done && { backgroundColor: accent.color, borderColor: accent.color }]}>
-                        {done ? <Icon name="check" size={14} color={markColor} /> : null}
-                      </Pressable>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={fill(text.editNamed, { name: task.title })}
-                        onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
-                        style={styles.copy}>
-                        <Text style={[styles.taskTitle, done && styles.taskDone]} numberOfLines={2}>
-                          {task.title}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  );
-                })}
+          sections.map((section) => {
+            const collapsed = closed[section.key] === true;
+            return (
+              <View key={section.key} style={styles.section}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: !collapsed }}
+                  onPress={() => setClosed((current) => ({ ...current, [section.key]: !collapsed }))}
+                  style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>{section.label}</Text>
+                  <View style={[styles.count, { backgroundColor: tint }]}>
+                    <Text style={styles.countText}>{section.items.length}</Text>
+                  </View>
+                  <View style={styles.spacer} />
+                  <View style={{ transform: [{ rotate: collapsed ? '0deg' : '180deg' }] }}>
+                    <Icon name="chevronDown" size={18} color={Palette.faint} />
+                  </View>
+                </Pressable>
+
+                {collapsed
+                  ? null
+                  : section.items.map((task) => {
+                      const done = task.status === 'done';
+                      const featured = task.id === featuredId;
+                      const when = `${section.label}  ${formatClock(task.start, timeFormat)}`;
+                      return (
+                        <View key={task.id} style={[styles.item, featured && { backgroundColor: tint }]}>
+                          <Pressable
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: done, disabled: pendingId === task.id }}
+                            accessibilityLabel={task.title}
+                            disabled={pendingId === task.id}
+                            hitSlop={8}
+                            onPress={() => void toggle(task)}
+                            style={[
+                              styles.box,
+                              done && { backgroundColor: accent.color, borderColor: accent.color },
+                            ]}>
+                            {done ? <Icon name="check" size={13} color={markColor} /> : null}
+                          </Pressable>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={fill(text.editNamed, { name: task.title })}
+                            onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
+                            style={styles.copy}>
+                            <Text style={[styles.title, done && styles.titleDone]} numberOfLines={2}>
+                              {task.title}
+                            </Text>
+                            <View style={[styles.pill, { backgroundColor: featured ? 'rgba(255,255,255,0.72)' : tint }]}>
+                              <Text style={styles.pillText}>{when}</Text>
+                            </View>
+                          </Pressable>
+                        </View>
+                      );
+                    })}
               </View>
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </Screen>
   );
 }
 
-function groupTodos(
+function groupByDay(
   tasks: Task[],
   labels: {
     today: string;
@@ -225,28 +144,32 @@ function groupTodos(
     yesterdayLabel: string;
   },
 ) {
-  const groups: { key: string; label: string; items: Task[] }[] = [];
+  const byDate = new Map<string, Task[]>();
   for (const task of tasks) {
-    const label =
-      task.date === labels.today
-        ? labels.todayLabel
-        : task.date === labels.tomorrow
-          ? labels.tomorrowLabel
-          : task.date === labels.yesterday
-            ? labels.yesterdayLabel
-            : formatScheduleDay(dateFromKey(task.date));
-    const key = `${task.status === 'done' ? 'done' : 'open'}:${task.date}`;
-    const last = groups[groups.length - 1];
-    if (last?.key === key) last.items.push(task);
-    else groups.push({ key, label, items: [task] });
+    const items = byDate.get(task.date) ?? [];
+    items.push(task);
+    byDate.set(task.date, items);
   }
-  return groups;
-}
 
-function bySchedule(a: Task, b: Task) {
-  const aDone = a.status === 'done' ? 1 : 0;
-  const bDone = b.status === 'done' ? 1 : 0;
-  return aDone - bDone || a.date.localeCompare(b.date) || a.start.localeCompare(b.start) || a.title.localeCompare(b.title);
+  const rank = (date: string) => (date === labels.today ? 0 : date > labels.today ? 1 : 2);
+  return [...byDate.keys()]
+    .sort((a, b) => {
+      const difference = rank(a) - rank(b);
+      if (difference !== 0) return difference;
+      return rank(a) === 2 ? b.localeCompare(a) : a.localeCompare(b);
+    })
+    .map((date) => ({
+      key: date,
+      label:
+        date === labels.today
+          ? labels.todayLabel
+          : date === labels.tomorrow
+            ? labels.tomorrowLabel
+            : date === labels.yesterday
+              ? labels.yesterdayLabel
+              : formatScheduleDay(dateFromKey(date)),
+      items: (byDate.get(date) ?? []).sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title)),
+    }));
 }
 
 function dateFromKey(key: string) {
@@ -269,174 +192,94 @@ function inkOn(hex: string) {
 }
 
 const styles = StyleSheet.create({
-  title: {
-    color: Palette.ink,
-    fontSize: 40,
-    fontWeight: 700,
-    letterSpacing: -1.2,
-  },
-  summary: {
-    marginTop: 18,
-    backgroundColor: Palette.white,
-    borderRadius: 28,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 16,
-    ...cardShadow,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  summaryDone: {
-    alignItems: 'flex-end',
-  },
-  summaryValue: {
-    color: Palette.ink,
-    fontSize: 36,
-    fontWeight: 700,
-    letterSpacing: -1,
-  },
-  summaryLabel: {
-    marginTop: 2,
+  kicker: {
     color: Palette.muted,
-    fontSize: 13,
-    fontWeight: 700,
-  },
-  track: {
-    marginTop: 16,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#F1EDF3',
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  composer: {
-    marginTop: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: Palette.white,
-    borderRadius: 22,
-    paddingLeft: 16,
-    paddingRight: 6,
-    minHeight: 60,
-    ...cardShadow,
-    shadowOpacity: 0.05,
-  },
-  input: {
-    flex: 1,
-    minHeight: 48,
-    color: Palette.ink,
     fontSize: 16,
     fontWeight: 600,
   },
-  add: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
+  date: {
+    marginTop: 4,
+    color: Palette.ink,
+    fontSize: 34,
+    fontWeight: 700,
+    letterSpacing: -0.8,
+  },
+  empty: {
+    marginTop: 28,
+  },
+  section: {
+    marginTop: 28,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    color: Palette.ink,
+    fontSize: 18,
+    fontWeight: 700,
+    letterSpacing: -0.3,
+  },
+  count: {
+    minWidth: 24,
+    height: 24,
+    paddingHorizontal: 7,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  filters: {
-    marginTop: 16,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 36,
-    paddingHorizontal: 12,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.72)',
-  },
-  chipOn: {
-    backgroundColor: Palette.ink,
-  },
-  chipText: {
+  countText: {
     color: Palette.ink,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 700,
   },
-  chipCount: {
-    color: Palette.muted,
-    fontSize: 13,
-    fontWeight: 700,
+  spacer: {
+    flex: 1,
   },
-  chipTextOn: {
-    color: Palette.white,
-  },
-  empty: {
-    marginTop: 18,
-  },
-  section: {
-    marginTop: 22,
-  },
-  sectionTitle: {
-    marginBottom: 10,
-    marginLeft: 4,
-    color: Palette.muted,
-    fontSize: 13,
-    fontWeight: 700,
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
-  stack: {
-    gap: 10,
-  },
-  card: {
+  item: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
-    minHeight: 68,
-    paddingRight: 14,
-    backgroundColor: Palette.white,
+    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderRadius: 22,
-    overflow: 'hidden',
-    ...cardShadow,
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-  },
-  cardDone: {
-    opacity: 0.72,
-  },
-  stripe: {
-    width: 6,
-    alignSelf: 'stretch',
   },
   box: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 22,
+    height: 22,
+    marginTop: 1,
+    borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: '#C8C4CE',
+    borderColor: '#C9C4D0',
+    backgroundColor: Palette.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
   copy: {
     flex: 1,
-    paddingVertical: 14,
+    gap: 8,
   },
-  taskTitle: {
+  title: {
     color: Palette.ink,
     fontSize: 16,
     fontWeight: 700,
     letterSpacing: -0.2,
   },
-  taskDone: {
+  titleDone: {
     color: Palette.muted,
-    textDecorationLine: 'line-through',
   },
-  pressed: {
-    opacity: 0.75,
+  pill: {
+    alignSelf: 'flex-start',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  disabled: {
-    opacity: 0.5,
+  pillText: {
+    color: Palette.ink,
+    fontSize: 12,
+    fontWeight: 700,
   },
 });
