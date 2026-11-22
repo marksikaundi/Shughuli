@@ -68,6 +68,10 @@ const ICONS = {
   paperclip: { ios: 'paperclip', android: 'attach_file', web: 'attach_file' },
   pin: { ios: 'mappin', android: 'place', web: 'place' },
   deadline: { ios: 'arrow.clockwise.circle', android: 'autorenew', web: 'autorenew' },
+  bubble: { ios: 'text.bubble', android: 'chat', web: 'chat' },
+  sort: { ios: 'arrow.up.arrow.down', android: 'swap_vert', web: 'swap_vert' },
+  link: { ios: 'link', android: 'link', web: 'link' },
+  select: { ios: 'square.on.square', android: 'select_all', web: 'select_all' },
 } as const;
 
 export type IconName = keyof typeof ICONS;
