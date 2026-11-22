@@ -15,6 +15,7 @@ import { Icon, type IconName } from '@/components/icon';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
 import type { Priority } from '@/data/model';
+import { PEOPLE, type PersonId } from '@/data/people';
 import { formatClock, startOfWeek, toDateKey, todayKey, useTasks } from '@/data/tasks';
 import { useProjects } from '@/data/projects';
 import { formatLocale, formatMonthYear } from '@/i18n/format';
@@ -40,6 +41,8 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
   const [description, setDescription] = useState('');
   const [tag, setTag] = useState('');
   const [tagOpen, setTagOpen] = useState(false);
+  const [person, setPerson] = useState<PersonId | null>(null);
+  const [peopleOpen, setPeopleOpen] = useState(false);
   const [project, setProject] = useState('');
   const [priority, setPriority] = useState<Priority>(priorityDefault);
   const [date, setDate] = useState(() => todayKey());
@@ -66,6 +69,7 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
         priority,
         project,
         tags: tag.trim() ? [tag.trim()] : [],
+        people: person ? [person] : [],
       });
       onClose();
     } catch (error) {
@@ -77,32 +81,70 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
   const dateLabel = dateChipLabel(date, dateChosen, time, today, tomorrow, timeFormat, text.today, text.tomorrow, text.dueDate);
 
   function openAction(id: QuickAddAction) {
-    if (id === 'date') {
+    if (id === 'date' || id === 'deadline') {
       setProjectsOpen(false);
       setPriorityOpen(false);
       setTagOpen(false);
+      setPeopleOpen(false);
       setDateOpen(true);
       return;
     }
     if (id === 'project') {
       setPriorityOpen(false);
       setTagOpen(false);
+      setPeopleOpen(false);
       setProjectsOpen((open) => !open);
       return;
     }
     if (id === 'priority') {
       setProjectsOpen(false);
       setTagOpen(false);
+      setPeopleOpen(false);
       setPriorityOpen((open) => !open);
       return;
     }
-    setProjectsOpen(false);
-    setPriorityOpen(false);
-    setTagOpen((open) => !open);
+    if (id === 'assignee') {
+      setProjectsOpen(false);
+      setPriorityOpen(false);
+      setTagOpen(false);
+      setPeopleOpen((open) => !open);
+      return;
+    }
+    if (id === 'labels') {
+      setProjectsOpen(false);
+      setPriorityOpen(false);
+      setPeopleOpen(false);
+      setTagOpen((open) => !open);
+    }
   }
 
   return (
     <View style={[styles.dock, { paddingBottom: bottomInset }]}>
+      {peopleOpen ? (
+        <View style={styles.menu}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setPerson(null);
+              setPeopleOpen(false);
+            }}
+            style={[styles.menuRow, person === null && styles.menuRowOn]}>
+            <Text style={styles.menuText}>{text.assignee}</Text>
+          </Pressable>
+          {(Object.keys(PEOPLE) as PersonId[]).map((id) => (
+            <Pressable
+              key={id}
+              accessibilityRole="button"
+              onPress={() => {
+                setPerson(id);
+                setPeopleOpen(false);
+              }}
+              style={[styles.menuRow, person === id && styles.menuRowOn]}>
+              <Text style={styles.menuText}>{PERSON_NAMES[id]}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
       {priorityOpen ? (
         <View style={styles.menu}>
           {PRIORITIES.map((item) => (
@@ -184,7 +226,18 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
               key={id}
               id={id}
               labeled={showLabels}
-              label={actionChipLabel(id, { project, inbox: text.inbox, date: dateLabel, priority: text.priority, labels: tag || text.labels })}
+              label={actionChipLabel(id, {
+                project,
+                inbox: text.inbox,
+                date: dateLabel,
+                priority: text.priority,
+                labels: tag || text.labels,
+                assignee: person ? PERSON_NAMES[person] : text.assignee,
+                attachment: text.attachment,
+                reminders: text.reminders,
+                deadline: text.deadline,
+                location: text.location,
+              })}
               onPress={() => openAction(id)}
             />
           ))}
@@ -219,20 +272,33 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
   );
 }
 
-function actionChipLabel(
-  id: QuickAddAction,
-  labels: { project: string; inbox: string; date: string; priority: string; labels: string },
-) {
+const PERSON_NAMES: Record<PersonId, string> = {
+  olivia: 'Olivia',
+  amira: 'Amira',
+  jules: 'Jules',
+  leo: 'Leo',
+  noah: 'Noah',
+};
+
+function actionChipLabel(id: QuickAddAction, labels: Record<QuickAddAction | 'inbox', string>) {
   if (id === 'project') return labels.project || labels.inbox;
-  if (id === 'date') return labels.date;
-  if (id === 'priority') return labels.priority;
-  return labels.labels;
+  return labels[id];
+}
+
+function actionIcon(id: QuickAddAction): IconName {
+  if (id === 'date' || id === 'deadline') return id === 'deadline' ? 'deadline' : 'calendar';
+  if (id === 'assignee') return 'person';
+  if (id === 'attachment') return 'paperclip';
+  if (id === 'priority') return 'flag';
+  if (id === 'reminders') return 'alarm';
+  if (id === 'location') return 'pin';
+  return 'tag';
 }
 
 function ActionChip({ id, label, labeled, onPress }: { id: QuickAddAction; label: string; labeled: boolean; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[styles.chip, !labeled && styles.chipIcon]}>
-      {id === 'project' ? <Text style={styles.hash}>#</Text> : <Icon name={id === 'date' ? 'calendar' : id === 'priority' ? 'flag' : 'tag'} size={14} color={Night.muted} />}
+      {id === 'project' ? <Text style={styles.hash}>#</Text> : <Icon name={actionIcon(id)} size={14} color={Night.muted} />}
       {labeled ? (
         <Text style={styles.chipText} numberOfLines={1}>
           {label}

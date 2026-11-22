@@ -328,7 +328,7 @@ function draftToTask(draft: TaskDraft): Task {
     category: 'work',
     project: draft.project,
     tags: draft.tags,
-    people: [],
+    people: draft.people ?? [],
     extraPeople: 0,
     scheduled: true,
     starred: false,

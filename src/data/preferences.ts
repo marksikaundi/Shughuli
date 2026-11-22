@@ -36,7 +36,8 @@ export const COLOR_THEMES = [
 export type AccentId = (typeof ACCENTS)[number]['id'];
 export type AppTintId = (typeof APP_TINTS)[number]['id'];
 export type ColorThemeId = (typeof COLOR_THEMES)[number]['id'];
-export const QUICK_ADD_ACTIONS = ['project', 'date', 'priority', 'labels'] as const;
+export const QUICK_ADD_ACTIONS = ['project', 'date', 'assignee', 'attachment', 'priority', 'reminders', 'labels', 'deadline', 'location'] as const;
+export const QUICK_ADD_PRO: readonly QuickAddAction[] = ['deadline', 'location'];
 export type QuickAddAction = (typeof QUICK_ADD_ACTIONS)[number];
 export type ThemeChoice = 'light' | 'dark' | 'system';
 export type FontSize = 'small' | 'default' | 'large';
@@ -104,6 +105,7 @@ export type Preferences = {
   quickAddLabels: boolean;
   quickAddDescription: boolean;
   quickAddIncluded: QuickAddAction[];
+  quickAddSeen: boolean;
   homeView: 'inbox' | 'today' | 'upcoming';
   syncHomeView: boolean;
   detectDates: boolean;
@@ -176,7 +178,8 @@ export const defaultPreferences: Preferences = {
   quickAddDate: true,
   quickAddLabels: true,
   quickAddDescription: false,
-  quickAddIncluded: ['project', 'date'],
+  quickAddIncluded: ['project', 'date', 'assignee'],
+  quickAddSeen: false,
   homeView: 'today',
   syncHomeView: true,
   detectDates: true,
@@ -302,7 +305,8 @@ function quickAddFields(input: Partial<Preferences>) {
   const known = new Set<string>(QUICK_ADD_ACTIONS);
   const saved = Array.isArray(input.quickAddIncluded) ? input.quickAddIncluded.filter((item): item is QuickAddAction => typeof item === 'string' && known.has(item)) : null;
   const customized = input.quickAddPriority === false || input.quickAddDate === false || input.quickAddProject === false;
-  const included = saved
+  const seen = input.quickAddSeen === true;
+  const base = saved
     ? uniqueActions(saved)
     : customized
       ? uniqueActions([
@@ -310,7 +314,9 @@ function quickAddFields(input: Partial<Preferences>) {
           ...(input.quickAddDate === false ? [] : (['date'] as const)),
           ...(input.quickAddPriority === false ? [] : (['priority'] as const)),
         ])
-      : uniqueActions(['project', 'date']);
+      : uniqueActions(['project', 'date', 'assignee']);
+  const legacy = base.join(',') === 'project,date' || base.join(',') === 'project,date,priority';
+  const included = !seen && legacy ? uniqueActions(['project', 'date', 'assignee']) : base;
   if (!included.includes('project')) included.unshift('project');
   if (included[0] !== 'project') {
     included.splice(included.indexOf('project'), 1);
@@ -323,6 +329,7 @@ function quickAddFields(input: Partial<Preferences>) {
     quickAddPriority: included.includes('priority'),
     quickAddLabels: bool(input.quickAddLabels, defaultPreferences.quickAddLabels),
     quickAddDescription: bool(input.quickAddDescription, defaultPreferences.quickAddDescription),
+    quickAddSeen: seen || (!legacy),
   };
 }
 

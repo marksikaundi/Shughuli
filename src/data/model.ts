@@ -48,6 +48,7 @@ export type TaskDraft = {
   priority: Priority;
   project: string;
   tags: string[];
+  people?: PersonId[];
   subtasks?: Subtask[];
   comments?: TaskComment[];
   sectionId?: string | null;

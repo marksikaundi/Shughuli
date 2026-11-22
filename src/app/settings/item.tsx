@@ -3,11 +3,11 @@ import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { Icon } from '@/components/icon';
+import { Icon, type IconName } from '@/components/icon';
 import { NightCard, NightFoot, NightPage, NightSwitch } from '@/components/settings/night-page';
 import { useSave } from '@/components/settings/page';
 import { Night } from '@/constants/night';
-import { APP_TINTS, appTintById, COLOR_THEMES, colorThemeById, QUICK_ADD_ACTIONS, type AppTintId, type ColorThemeId, type QuickAddAction, type ThemeChoice } from '@/data/preferences';
+import { APP_TINTS, appTintById, COLOR_THEMES, colorThemeById, QUICK_ADD_ACTIONS, QUICK_ADD_PRO, type AppTintId, type ColorThemeId, type QuickAddAction, type ThemeChoice } from '@/data/preferences';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
@@ -274,6 +274,7 @@ function QuickAddPanel() {
   function persist(list: QuickAddAction[]) {
     void save({
       quickAddIncluded: list,
+      quickAddSeen: true,
       quickAddProject: true,
       quickAddDate: list.includes('date'),
       quickAddPriority: list.includes('priority'),
@@ -337,6 +338,7 @@ function QuickAddPanel() {
             key={id}
             id={id}
             name={names[id]}
+            pro={QUICK_ADD_PRO.includes(id)}
             locked={id === 'project'}
             last={index === included.length - 1}
             included
@@ -354,6 +356,7 @@ function QuickAddPanel() {
               key={id}
               id={id}
               name={names[id]}
+              pro={QUICK_ADD_PRO.includes(id)}
               last={index === more.length - 1}
               included={false}
               onMove={() => undefined}
@@ -370,22 +373,37 @@ function actionNames(text: ReturnType<typeof useCopy>): Record<QuickAddAction, s
   return {
     project: text.project,
     date: text.dueDate,
+    assignee: text.assignee,
+    attachment: text.attachment,
     priority: text.priority,
+    reminders: text.reminders,
     labels: text.labels,
+    deadline: text.deadline,
+    location: text.location,
   };
 }
 
-function ActionMark({ id, muted = true }: { id: QuickAddAction; muted?: boolean }) {
-  const color = muted ? Night.muted : Night.text;
+function ActionMark({ id }: { id: QuickAddAction }) {
+  const color = '#C8C8C8';
   if (id === 'project') return <Text style={[styles.hash, { color }]}>#</Text>;
-  if (id === 'date') return <Icon name="calendar" size={16} color={color} />;
-  if (id === 'priority') return <Icon name="flag" size={16} color={color} />;
-  return <Icon name="tag" size={16} color={color} />;
+  return <Icon name={actionIcon(id)} size={18} color={color} />;
+}
+
+function actionIcon(id: QuickAddAction): IconName {
+  if (id === 'date') return 'calendar';
+  if (id === 'assignee') return 'person';
+  if (id === 'attachment') return 'paperclip';
+  if (id === 'priority') return 'flag';
+  if (id === 'reminders') return 'alarm';
+  if (id === 'deadline') return 'deadline';
+  if (id === 'location') return 'pin';
+  return 'tag';
 }
 
 function ActionRow({
   id,
   name,
+  pro = false,
   locked = false,
   included,
   last,
@@ -394,6 +412,7 @@ function ActionRow({
 }: {
   id: QuickAddAction;
   name: string;
+  pro?: boolean;
   locked?: boolean;
   included: boolean;
   last: boolean;
@@ -413,12 +432,14 @@ function ActionRow({
             accessibilityRole="button"
             accessibilityLabel={included ? name : name}
             onPress={onToggle}
-            style={[styles.bubble, { backgroundColor: included ? '#E15B52' : '#3DDC84' }]}>
+            style={[styles.bubble, { backgroundColor: included ? '#E15B52' : '#34C759' }]}>
             <Text style={styles.bubbleGlyph}>{included ? '−' : '+'}</Text>
           </Pressable>
         )}
         <ActionMark id={id} />
         <Text style={styles.actionName}>{name}</Text>
+        {pro ? <Icon name="starFill" size={14} color="#F6A623" /> : null}
+        <View style={styles.actionSpacer} />
         <Pressable accessibilityRole="button" accessibilityLabel={text.moveAction} disabled={locked || !included} onPress={onMove} hitSlop={8} style={styles.grip}>
           <View style={styles.gripLine} />
           <View style={styles.gripLine} />
@@ -753,10 +774,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionName: {
-    flex: 1,
     color: Night.text,
     fontSize: 16,
     fontWeight: 600,
+  },
+  actionSpacer: {
+    flex: 1,
   },
   actionLine: {
     height: StyleSheet.hairlineWidth,
@@ -771,7 +794,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bubbleGlyph: {
-    color: '#1A1A1A',
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 700,
     marginTop: -1,

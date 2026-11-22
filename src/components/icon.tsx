@@ -64,6 +64,9 @@ const ICONS = {
   plusBox: { ios: 'plus.square', android: 'add_box', web: 'add_box' },
   trend: { ios: 'arrow.up.right.circle', android: 'trending_up', web: 'trending_up' },
   gift: { ios: 'gift', android: 'card_giftcard', web: 'card_giftcard' },
+  paperclip: { ios: 'paperclip', android: 'attach_file', web: 'attach_file' },
+  pin: { ios: 'mappin', android: 'place', web: 'place' },
+  deadline: { ios: 'arrow.clockwise', android: 'update', web: 'update' },
 } as const;
 
 export type IconName = keyof typeof ICONS;
