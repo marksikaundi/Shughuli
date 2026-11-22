@@ -25,12 +25,18 @@ export default function CalendarSettingsScreen() {
   const [busy, setBusy] = useState<'google' | 'outlook' | null>(null);
   const [pending, setPending] = useState<'google' | 'outlook' | null>(null);
   const [more, setMore] = useState(false);
+  const [tip, setTip] = useState(false);
+  const tipPinned = useRef(false);
   const consentResolver = useRef<((allowed: boolean) => void) | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       void readCalendarLink().then(setLinks);
-      return () => answer(false);
+      return () => {
+        answer(false);
+        tipPinned.current = false;
+        setTip(false);
+      };
     }, []),
   );
 
@@ -75,7 +81,30 @@ export default function CalendarSettingsScreen() {
   const googleAccount = links?.googleAccount || (links && !links.outlookAccount ? links.account : null);
 
   return (
-    <NightPage title={text.tabCalendar}>
+    <NightPage
+      title={text.tabCalendar}
+      trailing={
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={text.calendarTip}
+          onPress={() => {
+            tipPinned.current = !tipPinned.current;
+            setTip(tipPinned.current);
+          }}
+          onHoverIn={() => setTip(true)}
+          onHoverOut={() => {
+            if (!tipPinned.current) setTip(false);
+          }}
+          style={styles.help}>
+          <Text style={styles.helpMark}>?</Text>
+        </Pressable>
+      }>
+      {tip ? (
+        <View style={styles.tip}>
+          <View style={styles.tipCaret} />
+          <Text style={styles.tipText}>{text.calendarTip}</Text>
+        </View>
+      ) : null}
       <View style={styles.connectRow}>
         <ConnectButton mark={<GoogleCalendarLogo />} label={text.connectGoogle} account={googleAccount} busy={busy === 'google'} onPress={() => void connect('google')} />
         <ConnectButton mark={<OutlookLogo />} label={text.connectOutlook} account={links?.outlookAccount} busy={busy === 'outlook'} onPress={() => void connect('outlook')} />
@@ -414,5 +443,42 @@ const styles = StyleSheet.create({
     color: Night.muted,
     fontSize: 16,
     fontWeight: 700,
+  },
+  help: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#3A3A3A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helpMark: {
+    color: Night.text,
+    fontSize: 18,
+    fontWeight: 700,
+  },
+  tip: {
+    alignSelf: 'flex-end',
+    width: 260,
+    marginTop: 8,
+    borderRadius: 12,
+    backgroundColor: '#3A3A3A',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  tipCaret: {
+    position: 'absolute',
+    top: -5,
+    right: 14,
+    width: 10,
+    height: 10,
+    backgroundColor: '#3A3A3A',
+    transform: [{ rotate: '45deg' }],
+  },
+  tipText: {
+    color: Night.text,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: 500,
   },
 });
