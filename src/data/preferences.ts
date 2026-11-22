@@ -43,6 +43,8 @@ export type Preferences = {
   vacationMode: boolean;
   completedVisibility: CompletedVisibility;
   taskReminders: boolean;
+  snoozeMinutes: number;
+  urgentAlerts: 'off' | 'time';
   habitReminders: boolean;
   dailyPlanning: boolean;
   focusNotifications: boolean;
@@ -96,6 +98,8 @@ export const defaultPreferences: Preferences = {
   vacationMode: false,
   completedVisibility: 'hide',
   taskReminders: true,
+  snoozeMinutes: 15,
+  urgentAlerts: 'off',
   habitReminders: false,
   dailyPlanning: false,
   focusNotifications: true,
@@ -150,6 +154,8 @@ export function runtimeFromPreferences(prefs: Preferences): RuntimePrefs {
     notificationSound: prefs.notificationSound,
     notificationVibration: prefs.notificationVibration,
     hideSensitive: prefs.hideSensitive,
+    snoozeMinutes: prefs.snoozeMinutes,
+    urgentAlerts: prefs.urgentAlerts,
   };
 }
 
@@ -176,6 +182,8 @@ export function sanitizePreferences(value: unknown): Preferences {
       defaultPreferences.completedVisibility,
     ),
     taskReminders: bool(input.taskReminders, defaultPreferences.taskReminders),
+    snoozeMinutes: oneOfMinutes(input.snoozeMinutes),
+    urgentAlerts: input.urgentAlerts === 'time' ? 'time' : 'off',
     habitReminders: bool(input.habitReminders, defaultPreferences.habitReminders),
     dailyPlanning: bool(input.dailyPlanning, defaultPreferences.dailyPlanning),
     focusNotifications: bool(input.focusNotifications, defaultPreferences.focusNotifications),
@@ -223,6 +231,10 @@ function languageChoice(input: Partial<Preferences>): Language {
 
 function oneOf<T extends string>(value: unknown, options: readonly T[], fallback: T): T {
   return typeof value === 'string' && options.includes(value as T) ? (value as T) : fallback;
+}
+
+function oneOfMinutes(value: unknown) {
+  return value === 5 || value === 15 || value === 30 || value === 60 ? value : 15;
 }
 
 function bool(value: unknown, fallback: boolean) {

@@ -98,6 +98,7 @@ async function syncIfNeeded(previous: Preferences, next: Preferences) {
     previous.notificationSound !== next.notificationSound ||
     previous.notificationVibration !== next.notificationVibration ||
     previous.hideSensitive !== next.hideSensitive ||
+    previous.urgentAlerts !== next.urgentAlerts ||
     previous.language !== next.language;
   if (tasksChanged) await useTaskStore.getState().syncReminders();
 }

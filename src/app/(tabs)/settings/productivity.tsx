@@ -1,22 +1,25 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Alert, Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
+import { Icon } from '@/components/icon';
 import { NightCard, NightFoot, NightPage, NightSwitch } from '@/components/settings/night-page';
 import { OptionSheet, SettingsRow, SettingsSection, ToggleRow } from '@/components/settings/controls';
 import { SettingsPage, useReminderToggle, useSave } from '@/components/settings/page';
 import { Night } from '@/constants/night';
-import { formatClock } from '@/data/model';
 import type { Preferences } from '@/data/preferences';
 import { formatLocale } from '@/i18n/format';
-import { useCopy } from '@/lib/settings-copy';
+import { ensureReminderPermission, registerReminderActions } from '@/lib/reminders';
+import { fill, useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
 export default function ProductivityScreen() {
   const params = useLocalSearchParams<{ part?: string }>();
   const part = params.part === 'reminders' || params.part === 'notifications' ? params.part : 'plan';
   if (part === 'plan') return <GoalScreen />;
-  return <ReminderScreen part={part} />;
+  if (part === 'reminders') return <ReminderSettings />;
+  return <NotificationScreen />;
 }
 
 function GoalScreen() {
@@ -120,31 +123,191 @@ function weekDays() {
   });
 }
 
-function ReminderScreen({ part }: { part: 'reminders' | 'notifications' }) {
+function ReminderSettings() {
+  const text = useCopy();
+  const prefs = usePreferencesStore((state) => state.prefs);
+  const save = useSave();
+  const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [sheet, setSheet] = useState<'via' | 'snooze' | 'automatic' | 'urgent' | null>(null);
+  const via =
+    prefs.notificationSound === 'chime' ? text.timerChime : prefs.notificationSound === 'bell' ? text.timerBell : prefs.notificationSound === 'none' ? text.timerSilent : text.soundSystem;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'web') {
+        setAllowed(false);
+        return;
+      }
+      void registerReminderActions();
+      void Notifications.getPermissionsAsync().then((permission) => setAllowed(permission.status === 'granted'));
+    }, []),
+  );
+
+  async function openSystemSettings() {
+    if (Platform.OS === 'web') return;
+    const granted = await ensureReminderPermission();
+    setAllowed(granted);
+    if (!granted) await Linking.openSettings();
+  }
+
+  return (
+    <NightPage title={text.reminders}>
+      <Text style={styles.section}>{text.enableNotifications}</Text>
+      <Pressable accessibilityRole="button" onPress={() => void openSystemSettings()} style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}>
+        <Text style={styles.settingsButtonText}>{text.openSettingsApp}</Text>
+      </Pressable>
+      <NightFoot>{allowed ? text.notificationsOn : text.notificationsOff}</NightFoot>
+
+      <Text style={styles.section}>{text.reminderPreferences}</Text>
+      <NightCard>
+        <ReminderRow label={text.remindMeVia} onPress={() => setSheet('via')} />
+        <ReminderRow label={text.whenSnoozed} value={fill(text.snoozeMinutes, { count: prefs.snoozeMinutes })} onPress={() => setSheet('snooze')} last />
+      </NightCard>
+
+      <NightCard>
+        <ReminderRow label={text.automaticReminders} value={prefs.taskReminders ? text.atTimeOfTask : text.reminderOff} onPress={() => setSheet('automatic')} last />
+      </NightCard>
+      <NightFoot>{text.automaticRemindersFoot}</NightFoot>
+
+      <Text style={styles.section}>{text.urgentReminders}</Text>
+      <NightCard>
+        <ReminderRow label={text.alertsOn} value={prefs.urgentAlerts === 'time' ? text.atTimeOfTask : text.notSet} onPress={() => setSheet('urgent')} />
+        <Pressable accessibilityRole="button" onPress={() => void openSystemSettings()} style={({ pressed }) => [styles.deviceRow, pressed && styles.pressed]}>
+          <Text style={styles.deviceText}>{text.receiveOnDevice}</Text>
+        </Pressable>
+      </NightCard>
+      <Text style={styles.urgentNote}>
+        {text.urgentFoot}{' '}
+        <Text style={styles.learn} onPress={() => Alert.alert(text.urgentReminders, text.aboutRemindersBody)}>
+          {text.learnMore}
+        </Text>
+      </Text>
+
+      <Pressable accessibilityRole="button" onPress={() => Alert.alert(text.remindersNotWorking, `${text.permissionDenied}\n\n${text.reminderFoot}`, [{ text: text.openSettingsApp, onPress: () => void Linking.openSettings() }, { text: text.close, style: 'cancel' }])}>
+        <Text style={styles.help}>{text.remindersNotWorking}</Text>
+      </Pressable>
+
+      <ChoiceSheet
+        visible={sheet === 'via'}
+        title={text.remindMeVia}
+        selected={prefs.notificationSound}
+        options={[
+          { id: 'system', label: text.soundSystem },
+          { id: 'chime', label: text.timerChime },
+          { id: 'bell', label: text.timerBell },
+          { id: 'none', label: text.timerSilent },
+        ]}
+        onClose={() => setSheet(null)}
+        onSelect={(notificationSound) => {
+          setSheet(null);
+          void save({ notificationSound: notificationSound as Preferences['notificationSound'] });
+        }}
+      />
+      <ChoiceSheet
+        visible={sheet === 'snooze'}
+        title={text.whenSnoozed}
+        selected={String(prefs.snoozeMinutes)}
+        options={[5, 15, 30, 60].map((count) => ({ id: String(count), label: fill(text.snoozeMinutes, { count }) }))}
+        onClose={() => setSheet(null)}
+        onSelect={(id) => {
+          setSheet(null);
+          void save({ snoozeMinutes: Number(id) as Preferences['snoozeMinutes'] });
+        }}
+      />
+      <ChoiceSheet
+        visible={sheet === 'automatic'}
+        title={text.automaticReminders}
+        selected={prefs.taskReminders ? 'time' : 'off'}
+        options={[
+          { id: 'off', label: text.reminderOff },
+          { id: 'time', label: text.atTimeOfTask },
+        ]}
+        onClose={() => setSheet(null)}
+        onSelect={(id) => {
+          setSheet(null);
+          if (id === 'time') void ensureReminderPermission().then((granted) => setAllowed(granted));
+          void save({ taskReminders: id === 'time' });
+        }}
+      />
+      <ChoiceSheet
+        visible={sheet === 'urgent'}
+        title={text.alertsOn}
+        selected={prefs.urgentAlerts}
+        options={[
+          { id: 'off', label: text.notSet },
+          { id: 'time', label: text.atTimeOfTask },
+        ]}
+        onClose={() => setSheet(null)}
+        onSelect={(id) => {
+          setSheet(null);
+          if (id === 'time') void ensureReminderPermission().then((granted) => setAllowed(granted));
+          void save({ urgentAlerts: id === 'time' ? 'time' : 'off' });
+        }}
+      />
+    </NightPage>
+  );
+}
+
+function ReminderRow({ label, value, onPress, last = false }: { label: string; value?: string; onPress: () => void; last?: boolean }) {
+  return (
+    <View>
+      <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.goal, pressed && styles.pressed]}>
+        <Text style={styles.goalLabel}>{label}</Text>
+        {value ? <Text style={styles.goalValue}>{value}</Text> : null}
+        <Icon name="chevron" size={16} color={Night.faint} />
+      </Pressable>
+      {last ? null : <View style={styles.goalLine} />}
+    </View>
+  );
+}
+
+function ChoiceSheet({
+  visible,
+  title,
+  options,
+  selected,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  title: string;
+  options: { id: string; label: string }[];
+  selected?: string;
+  onClose: () => void;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable style={styles.sheet} onPress={() => undefined}>
+          <Text style={styles.sheetTitle}>{title}</Text>
+          {options.map((option) => (
+            <Pressable key={option.id} accessibilityRole="button" onPress={() => onSelect(option.id)} style={styles.sheetRow}>
+              <Text style={styles.goalLabel}>{option.label}</Text>
+              {option.id === selected ? <Icon name="check" size={16} color={Night.accent} /> : null}
+            </Pressable>
+          ))}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function NotificationScreen() {
   const text = useCopy();
   const prefs = usePreferencesStore((state) => state.prefs);
   const save = useSave();
   const toggle = useReminderToggle();
   const [sheet, setSheet] = useState(false);
-  const title = part === 'reminders' ? text.reminders : text.notificationRow;
   const soundLabel =
     prefs.notificationSound === 'chime' ? text.timerChime : prefs.notificationSound === 'bell' ? text.timerBell : prefs.notificationSound === 'none' ? text.timerSilent : text.soundSystem;
 
   return (
-    <SettingsPage title={title}>
-      {part === 'reminders' ? (
-        <SettingsSection footer={`${text.endOfDay}: ${formatClock('20:00')}. ${text.reminderFoot}`}>
-          <ToggleRow icon="bell" label={text.taskReminders} value={prefs.taskReminders} onChange={(value) => void toggle('taskReminders', value)} />
-          <ToggleRow icon="check" label={text.habitReminders} value={prefs.habitReminders} onChange={(value) => void toggle('habitReminders', value)} />
-          <ToggleRow icon="sun" label={text.dailyPlanning} value={prefs.dailyPlanning} onChange={(value) => void toggle('dailyPlanning', value)} />
-          <ToggleRow icon="moon" label={text.endOfDay} value={prefs.endOfDayReview} onChange={(value) => void toggle('endOfDayReview', value)} border={false} />
-        </SettingsSection>
-      ) : (
-        <SettingsSection footer={text.reminderFoot}>
-          <SettingsRow icon="speaker" label={text.sound} value={soundLabel} onPress={() => setSheet(true)} />
-          <ToggleRow icon="wave" label={text.vibration} value={prefs.notificationVibration} onChange={(value) => void toggle('notificationVibration', value)} border={false} />
-        </SettingsSection>
-      )}
+    <SettingsPage title={text.notificationRow}>
+      <SettingsSection footer={text.reminderFoot}>
+        <SettingsRow icon="speaker" label={text.sound} value={soundLabel} onPress={() => setSheet(true)} />
+        <ToggleRow icon="wave" label={text.vibration} value={prefs.notificationVibration} onChange={(value) => void toggle('notificationVibration', value)} border={false} />
+      </SettingsSection>
       <OptionSheet
         visible={sheet}
         title={text.sound}
@@ -229,5 +392,72 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72,
+  },
+  settingsButton: {
+    marginTop: 12,
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: Night.row,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsButtonText: {
+    color: Night.accent,
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  deviceRow: {
+    minHeight: 52,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+  },
+  deviceText: {
+    color: Night.accent,
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  urgentNote: {
+    marginTop: 10,
+    marginHorizontal: 4,
+    color: Night.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: 500,
+  },
+  learn: {
+    color: Night.accent,
+    fontWeight: 700,
+  },
+  help: {
+    marginTop: 28,
+    marginLeft: 4,
+    color: Night.text,
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  sheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: Night.row,
+    paddingTop: 16,
+    paddingBottom: 28,
+  },
+  sheetTitle: {
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    color: Night.text,
+    fontSize: 18,
+    fontWeight: 700,
+  },
+  sheetRow: {
+    minHeight: 48,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

@@ -13,6 +13,8 @@ export type RuntimePrefs = {
   notificationSound: ReminderSound;
   notificationVibration: boolean;
   hideSensitive: boolean;
+  snoozeMinutes: number;
+  urgentAlerts: 'off' | 'time';
 };
 
 const runtime: RuntimePrefs = {
@@ -24,6 +26,8 @@ const runtime: RuntimePrefs = {
   notificationSound: 'system',
   notificationVibration: true,
   hideSensitive: false,
+  snoozeMinutes: 15,
+  urgentAlerts: 'off',
 };
 
 export function getRuntimePrefs() {
