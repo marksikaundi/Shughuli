@@ -63,6 +63,7 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: '#FBF6F3' },
             }}>
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="settings" options={{ contentStyle: { backgroundColor: '#1F1F1F' } }} />
             <Stack.Screen
               name="add-task"
               options={{

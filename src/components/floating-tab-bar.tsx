@@ -27,7 +27,7 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
   const showUpcoming = usePreferencesStore((state) => state.prefs.showUpcomingTab);
   const tint = appTintById(usePreferencesStore((state) => state.prefs.appTint)).color;
   const focusedKey = state.routes[state.index]?.key;
-  const visible = state.routes.filter((route) => route.name !== 'settings' && !hiddenTab(route.name, showInbox, showToday, showUpcoming));
+  const visible = state.routes.filter((route) => !hiddenTab(route.name, showInbox, showToday, showUpcoming));
   const splitAt = visible.findIndex((route) => route.name === (visible.some((route) => route.name === 'calendar') ? 'calendar' : 'browse'));
   const left = splitAt === -1 ? visible : visible.slice(0, splitAt);
   const right = splitAt === -1 ? [] : visible.slice(splitAt);
