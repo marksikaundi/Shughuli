@@ -36,6 +36,8 @@ export const COLOR_THEMES = [
 export type AccentId = (typeof ACCENTS)[number]['id'];
 export type AppTintId = (typeof APP_TINTS)[number]['id'];
 export type ColorThemeId = (typeof COLOR_THEMES)[number]['id'];
+export const QUICK_ADD_ACTIONS = ['project', 'date', 'priority', 'labels'] as const;
+export type QuickAddAction = (typeof QUICK_ADD_ACTIONS)[number];
 export type ThemeChoice = 'light' | 'dark' | 'system';
 export type FontSize = 'small' | 'default' | 'large';
 export type CompletedVisibility = 'show' | 'dim' | 'hide';
@@ -99,6 +101,9 @@ export type Preferences = {
   quickAddPriority: boolean;
   quickAddProject: boolean;
   quickAddDate: boolean;
+  quickAddLabels: boolean;
+  quickAddDescription: boolean;
+  quickAddIncluded: QuickAddAction[];
   homeView: 'inbox' | 'today' | 'upcoming';
   syncHomeView: boolean;
   detectDates: boolean;
@@ -166,9 +171,12 @@ export const defaultPreferences: Preferences = {
   showInboxTab: true,
   showTodayTab: true,
   showUpcomingTab: true,
-  quickAddPriority: true,
+  quickAddPriority: false,
   quickAddProject: true,
   quickAddDate: true,
+  quickAddLabels: true,
+  quickAddDescription: false,
+  quickAddIncluded: ['project', 'date'],
   homeView: 'today',
   syncHomeView: true,
   detectDates: true,
@@ -274,9 +282,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     showInboxTab: bool(input.showInboxTab, defaultPreferences.showInboxTab),
     showTodayTab: bool(input.showTodayTab, defaultPreferences.showTodayTab),
     showUpcomingTab: bool(input.showUpcomingTab, defaultPreferences.showUpcomingTab),
-    quickAddPriority: bool(input.quickAddPriority, defaultPreferences.quickAddPriority),
-    quickAddProject: bool(input.quickAddProject, defaultPreferences.quickAddProject),
-    quickAddDate: bool(input.quickAddDate, defaultPreferences.quickAddDate),
+    ...quickAddFields(input),
     homeView: oneOf(input.homeView, ['inbox', 'today', 'upcoming'] as const, defaultPreferences.homeView),
     syncHomeView: bool(input.syncHomeView, defaultPreferences.syncHomeView),
     detectDates: bool(input.detectDates, defaultPreferences.detectDates),
@@ -290,6 +296,40 @@ export function sanitizePreferences(value: unknown): Preferences {
     rightSwipe: oneOf(input.rightSwipe, ['select', 'schedule', 'complete', 'none'] as const, defaultPreferences.rightSwipe),
     leftSwipe: oneOf(input.leftSwipe, ['select', 'schedule', 'complete', 'none'] as const, defaultPreferences.leftSwipe),
   };
+}
+
+function quickAddFields(input: Partial<Preferences>) {
+  const known = new Set<string>(QUICK_ADD_ACTIONS);
+  const saved = Array.isArray(input.quickAddIncluded) ? input.quickAddIncluded.filter((item): item is QuickAddAction => typeof item === 'string' && known.has(item)) : null;
+  const customized = input.quickAddPriority === false || input.quickAddDate === false || input.quickAddProject === false;
+  const included = saved
+    ? uniqueActions(saved)
+    : customized
+      ? uniqueActions([
+          'project',
+          ...(input.quickAddDate === false ? [] : (['date'] as const)),
+          ...(input.quickAddPriority === false ? [] : (['priority'] as const)),
+        ])
+      : uniqueActions(['project', 'date']);
+  if (!included.includes('project')) included.unshift('project');
+  if (included[0] !== 'project') {
+    included.splice(included.indexOf('project'), 1);
+    included.unshift('project');
+  }
+  return {
+    quickAddIncluded: included,
+    quickAddProject: true,
+    quickAddDate: included.includes('date'),
+    quickAddPriority: included.includes('priority'),
+    quickAddLabels: bool(input.quickAddLabels, defaultPreferences.quickAddLabels),
+    quickAddDescription: bool(input.quickAddDescription, defaultPreferences.quickAddDescription),
+  };
+}
+
+function uniqueActions(items: QuickAddAction[]) {
+  const next: QuickAddAction[] = [];
+  for (const item of items) if (!next.includes(item)) next.push(item);
+  return next;
 }
 
 function languageChoice(input: Partial<Preferences>): Language {

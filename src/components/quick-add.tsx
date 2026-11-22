@@ -20,6 +20,7 @@ import { useProjects } from '@/data/projects';
 import { formatLocale, formatMonthYear } from '@/i18n/format';
 import { fill, useCopy } from '@/lib/settings-copy';
 import type { WeekStart } from '@/lib/runtime-prefs';
+import type { QuickAddAction } from '@/data/preferences';
 import { usePreferencesStore } from '@/store/preferences';
 
 const PRIORITIES: Priority[] = ['low', 'medium', 'high'];
@@ -32,10 +33,13 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
   const planningStart = usePreferencesStore((state) => state.prefs.planningStart);
   const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
   const weekStartsOn = usePreferencesStore((state) => state.prefs.weekStartsOn);
-  const showPriority = usePreferencesStore((state) => state.prefs.quickAddPriority);
-  const showProject = usePreferencesStore((state) => state.prefs.quickAddProject);
-  const showDate = usePreferencesStore((state) => state.prefs.quickAddDate);
+  const included = usePreferencesStore((state) => state.prefs.quickAddIncluded);
+  const showLabels = usePreferencesStore((state) => state.prefs.quickAddLabels);
+  const showDescription = usePreferencesStore((state) => state.prefs.quickAddDescription);
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [tag, setTag] = useState('');
+  const [tagOpen, setTagOpen] = useState(false);
   const [project, setProject] = useState('');
   const [priority, setPriority] = useState<Priority>(priorityDefault);
   const [date, setDate] = useState(() => todayKey());
@@ -56,12 +60,12 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
     try {
       await addTask({
         title: nextTitle,
-        description: '',
+        description: showDescription ? description.trim() : '',
         date,
         start: time ?? planningStart,
         priority,
         project,
-        tags: [],
+        tags: tag.trim() ? [tag.trim()] : [],
       });
       onClose();
     } catch (error) {
@@ -71,6 +75,31 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
   }
 
   const dateLabel = dateChipLabel(date, dateChosen, time, today, tomorrow, timeFormat, text.today, text.tomorrow, text.dueDate);
+
+  function openAction(id: QuickAddAction) {
+    if (id === 'date') {
+      setProjectsOpen(false);
+      setPriorityOpen(false);
+      setTagOpen(false);
+      setDateOpen(true);
+      return;
+    }
+    if (id === 'project') {
+      setPriorityOpen(false);
+      setTagOpen(false);
+      setProjectsOpen((open) => !open);
+      return;
+    }
+    if (id === 'priority') {
+      setProjectsOpen(false);
+      setTagOpen(false);
+      setPriorityOpen((open) => !open);
+      return;
+    }
+    setProjectsOpen(false);
+    setPriorityOpen(false);
+    setTagOpen((open) => !open);
+  }
 
   return (
     <View style={[styles.dock, { paddingBottom: bottomInset }]}>
@@ -130,50 +159,35 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
           returnKeyType="done"
           onSubmitEditing={() => void submit()}
         />
+        {showDescription ? (
+          <TextInput
+            value={description}
+            onChangeText={setDescription}
+            placeholder={text.description}
+            placeholderTextColor={Night.faint}
+            style={styles.description}
+            multiline
+          />
+        ) : null}
+        {tagOpen ? (
+          <TextInput
+            value={tag}
+            onChangeText={setTag}
+            placeholder={text.labels}
+            placeholderTextColor={Night.faint}
+            style={styles.description}
+          />
+        ) : null}
         <View style={styles.tools}>
-          {showPriority ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={text.priority}
-            onPress={() => {
-              setProjectsOpen(false);
-              setPriorityOpen((open) => !open);
-            }}
-            style={styles.plus}>
-            <Icon name="plus" size={16} color={Night.text} />
-          </Pressable>
-          ) : null}
-          {showProject ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={project || text.inbox}
-            onPress={() => {
-              setPriorityOpen(false);
-              setProjectsOpen((open) => !open);
-            }}
-            style={styles.chip}>
-            <Icon name="inbox" size={14} color={Night.muted} />
-            <Text style={styles.chipText} numberOfLines={1}>
-              {project || text.inbox}
-            </Text>
-          </Pressable>
-          ) : null}
-          {showDate ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={text.chooseDueDate}
-            onPress={() => {
-              setProjectsOpen(false);
-              setPriorityOpen(false);
-              setDateOpen(true);
-            }}
-            style={styles.chip}>
-            <Icon name="calendar" size={14} color={Night.muted} />
-            <Text style={styles.chipText} numberOfLines={1}>
-              {dateLabel}
-            </Text>
-          </Pressable>
-          ) : null}
+          {included.map((id) => (
+            <ActionChip
+              key={id}
+              id={id}
+              labeled={showLabels}
+              label={actionChipLabel(id, { project, inbox: text.inbox, date: dateLabel, priority: text.priority, labels: tag || text.labels })}
+              onPress={() => openAction(id)}
+            />
+          ))}
           <View style={styles.spacer} />
           <Pressable
             accessibilityRole="button"
@@ -202,6 +216,29 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
         />
       ) : null}
     </View>
+  );
+}
+
+function actionChipLabel(
+  id: QuickAddAction,
+  labels: { project: string; inbox: string; date: string; priority: string; labels: string },
+) {
+  if (id === 'project') return labels.project || labels.inbox;
+  if (id === 'date') return labels.date;
+  if (id === 'priority') return labels.priority;
+  return labels.labels;
+}
+
+function ActionChip({ id, label, labeled, onPress }: { id: QuickAddAction; label: string; labeled: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[styles.chip, !labeled && styles.chipIcon]}>
+      {id === 'project' ? <Text style={styles.hash}>#</Text> : <Icon name={id === 'date' ? 'calendar' : id === 'priority' ? 'flag' : 'tag'} size={14} color={Night.muted} />}
+      {labeled ? (
+        <Text style={styles.chipText} numberOfLines={1}>
+          {label}
+        </Text>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -525,9 +562,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 700,
   },
+  description: {
+    marginTop: 8,
+    minHeight: 22,
+    color: Night.text,
+    fontSize: 15,
+    fontWeight: 500,
+    padding: 0,
+  },
   tools: {
     marginTop: 12,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 8,
   },
@@ -549,11 +595,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  chipIcon: {
+    width: 32,
+    paddingHorizontal: 0,
+    justifyContent: 'center',
+  },
   chipText: {
     flexShrink: 1,
     color: Night.text,
     fontSize: 13,
     fontWeight: 600,
+  },
+  hash: {
+    color: Night.muted,
+    fontSize: 15,
+    fontWeight: 700,
   },
   spacer: {
     flex: 1,

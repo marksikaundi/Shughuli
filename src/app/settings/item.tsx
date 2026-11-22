@@ -7,7 +7,7 @@ import { Icon } from '@/components/icon';
 import { NightCard, NightFoot, NightPage, NightSwitch } from '@/components/settings/night-page';
 import { useSave } from '@/components/settings/page';
 import { Night } from '@/constants/night';
-import { APP_TINTS, appTintById, COLOR_THEMES, colorThemeById, type AppTintId, type ColorThemeId, type ThemeChoice } from '@/data/preferences';
+import { APP_TINTS, appTintById, COLOR_THEMES, colorThemeById, QUICK_ADD_ACTIONS, type AppTintId, type ColorThemeId, type QuickAddAction, type ThemeChoice } from '@/data/preferences';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
@@ -267,16 +267,166 @@ function QuickAddPanel() {
   const text = useCopy();
   const prefs = usePreferencesStore((state) => state.prefs);
   const save = useSave();
+  const names = actionNames(text);
+  const included = prefs.quickAddIncluded;
+  const more = QUICK_ADD_ACTIONS.filter((id) => !included.includes(id));
+
+  function persist(list: QuickAddAction[]) {
+    void save({
+      quickAddIncluded: list,
+      quickAddProject: true,
+      quickAddDate: list.includes('date'),
+      quickAddPriority: list.includes('priority'),
+    });
+  }
+
+  function move(id: QuickAddAction) {
+    if (id === 'project') return;
+    const list = [...included];
+    const index = list.indexOf(id);
+    if (index < 1) return;
+    const next = index === list.length - 1 ? 1 : index + 1;
+    const [item] = list.splice(index, 1);
+    list.splice(next, 0, item);
+    persist(list);
+  }
 
   return (
     <NightPage title={text.quickAdd}>
-      <NightCard>
-        <NightSwitch label={text.priority} value={prefs.quickAddPriority} onChange={(quickAddPriority) => void save({ quickAddPriority })} />
-        <NightSwitch label={text.project} value={prefs.quickAddProject} onChange={(quickAddProject) => void save({ quickAddProject })} />
-        <NightSwitch label={text.dueDate} value={prefs.quickAddDate} onChange={(quickAddDate) => void save({ quickAddDate })} last />
-      </NightCard>
-      <NightFoot>{text.quickAddFoot}</NightFoot>
+      <View style={styles.syncCard}>
+        <View style={styles.optionRow}>
+          <Text style={styles.syncLabel}>{text.showActionLabels}</Text>
+          <Switch
+            accessibilityLabel={text.showActionLabels}
+            value={prefs.quickAddLabels}
+            onValueChange={(quickAddLabels) => void save({ quickAddLabels })}
+            trackColor={{ false: '#3A3A3A', true: Night.accent }}
+            thumbColor={Night.text}
+          />
+        </View>
+        <View style={styles.optionLine} />
+        <View style={styles.optionRow}>
+          <Text style={styles.syncLabel}>{text.showDescription}</Text>
+          <Switch
+            accessibilityLabel={text.showDescription}
+            value={prefs.quickAddDescription}
+            onValueChange={(quickAddDescription) => void save({ quickAddDescription })}
+            trackColor={{ false: '#3A3A3A', true: Night.accent }}
+            thumbColor={Night.text}
+          />
+        </View>
+      </View>
+
+      <Text style={styles.taskName}>{text.taskName}</Text>
+      <View style={styles.previewChips}>
+        <View style={styles.previewPlus}>
+          <Text style={styles.previewGlyph}>+</Text>
+        </View>
+        {included.map((id) => (
+          <View key={id} style={[styles.previewChip, !prefs.quickAddLabels && styles.previewChipIcon]}>
+            <ActionMark id={id} />
+            {prefs.quickAddLabels ? <Text style={styles.previewChipText}>{names[id]}</Text> : null}
+          </View>
+        ))}
+      </View>
+
+      <Text style={styles.actionHeading}>{text.includedTaskActions}</Text>
+      <View style={styles.actionCard}>
+        {included.map((id, index) => (
+          <ActionRow
+            key={id}
+            id={id}
+            name={names[id]}
+            locked={id === 'project'}
+            last={index === included.length - 1}
+            included
+            onMove={() => move(id)}
+            onToggle={() => persist(included.filter((item) => item !== id))}
+          />
+        ))}
+      </View>
+
+      {more.length > 0 ? <Text style={styles.actionHeading}>{text.moreTaskActions}</Text> : null}
+      {more.length > 0 ? (
+        <View style={styles.actionCard}>
+          {more.map((id, index) => (
+            <ActionRow
+              key={id}
+              id={id}
+              name={names[id]}
+              last={index === more.length - 1}
+              included={false}
+              onMove={() => undefined}
+              onToggle={() => persist([...included, id])}
+            />
+          ))}
+        </View>
+      ) : null}
     </NightPage>
+  );
+}
+
+function actionNames(text: ReturnType<typeof useCopy>): Record<QuickAddAction, string> {
+  return {
+    project: text.project,
+    date: text.dueDate,
+    priority: text.priority,
+    labels: text.labels,
+  };
+}
+
+function ActionMark({ id, muted = true }: { id: QuickAddAction; muted?: boolean }) {
+  const color = muted ? Night.muted : Night.text;
+  if (id === 'project') return <Text style={[styles.hash, { color }]}>#</Text>;
+  if (id === 'date') return <Icon name="calendar" size={16} color={color} />;
+  if (id === 'priority') return <Icon name="flag" size={16} color={color} />;
+  return <Icon name="tag" size={16} color={color} />;
+}
+
+function ActionRow({
+  id,
+  name,
+  locked = false,
+  included,
+  last,
+  onToggle,
+  onMove,
+}: {
+  id: QuickAddAction;
+  name: string;
+  locked?: boolean;
+  included: boolean;
+  last: boolean;
+  onToggle: () => void;
+  onMove: () => void;
+}) {
+  const text = useCopy();
+  return (
+    <View>
+      <View style={styles.actionRow}>
+        {locked ? (
+          <View style={styles.lockBubble}>
+            <Icon name="lock" size={14} color={Night.text} />
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={included ? name : name}
+            onPress={onToggle}
+            style={[styles.bubble, { backgroundColor: included ? '#E15B52' : '#3DDC84' }]}>
+            <Text style={styles.bubbleGlyph}>{included ? '−' : '+'}</Text>
+          </Pressable>
+        )}
+        <ActionMark id={id} />
+        <Text style={styles.actionName}>{name}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={text.moveAction} disabled={locked || !included} onPress={onMove} hitSlop={8} style={styles.grip}>
+          <View style={styles.gripLine} />
+          <View style={styles.gripLine} />
+          <View style={styles.gripLine} />
+        </Pressable>
+      </View>
+      {last ? null : <View style={styles.actionLine} />}
+    </View>
   );
 }
 
@@ -518,5 +668,133 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72,
+  },
+  optionRow: {
+    minHeight: 52,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  optionLine: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 16,
+    backgroundColor: '#3A3A3A',
+  },
+  taskName: {
+    marginTop: 22,
+    marginLeft: 4,
+    color: Night.muted,
+    fontSize: 15,
+    fontWeight: 600,
+  },
+  previewChips: {
+    marginTop: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  previewPlus: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#3A3A3A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewGlyph: {
+    color: Night.text,
+    fontSize: 20,
+    fontWeight: 500,
+    marginTop: -1,
+  },
+  previewChip: {
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#3A3A3A',
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  previewChipIcon: {
+    width: 36,
+    paddingHorizontal: 0,
+    justifyContent: 'center',
+  },
+  previewChipText: {
+    color: Night.text,
+    fontSize: 14,
+    fontWeight: 600,
+  },
+  hash: {
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  actionHeading: {
+    marginTop: 26,
+    marginBottom: -4,
+    marginLeft: 4,
+    color: Night.muted,
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  actionCard: {
+    marginTop: 12,
+    borderRadius: 16,
+    backgroundColor: Night.row,
+    overflow: 'hidden',
+  },
+  actionRow: {
+    minHeight: 54,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  actionName: {
+    flex: 1,
+    color: Night.text,
+    fontSize: 16,
+    fontWeight: 600,
+  },
+  actionLine: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 52,
+    backgroundColor: '#3A3A3A',
+  },
+  bubble: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bubbleGlyph: {
+    color: '#1A1A1A',
+    fontSize: 18,
+    fontWeight: 700,
+    marginTop: -1,
+  },
+  lockBubble: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#3A3A3A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  grip: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  gripLine: {
+    width: 14,
+    height: 1.5,
+    borderRadius: 1,
+    backgroundColor: '#8A8A8A',
   },
 });
