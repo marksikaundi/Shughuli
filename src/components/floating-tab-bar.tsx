@@ -21,6 +21,9 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
   const pathname = usePathname();
   const focusedKey = state.routes[state.index]?.key;
   const routes = state.routes.filter((route) => route.name !== 'settings');
+  const upcomingIndex = routes.findIndex((route) => route.name === 'calendar');
+  const left = upcomingIndex === -1 ? routes : routes.slice(0, upcomingIndex);
+  const right = upcomingIndex === -1 ? [] : routes.slice(upcomingIndex);
   const showAdd = !pathname.startsWith('/settings');
   const [composing, setComposing] = useState(false);
   const [keyboard, setKeyboard] = useState(0);
@@ -40,6 +43,39 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
     };
   }, []);
 
+  function renderTab(route: (typeof routes)[number]) {
+    const focused = route.key === focusedKey;
+    const { options } = descriptors[route.key];
+    const label = options.title ?? route.name;
+    const name = typeof label === 'string' ? label : route.name;
+    const color = focused ? Night.accent : Night.muted;
+    const onPress = () => {
+      const event = emitter.emit({
+        type: 'tabPress',
+        target: route.key,
+        canPreventDefault: true,
+      });
+      if (event.defaultPrevented) return;
+      if (!focused) navigateToTab(route.key);
+    };
+    return (
+      <Pressable
+        key={route.key}
+        accessibilityRole="tab"
+        accessibilityLabel={name}
+        accessibilityState={{ selected: focused }}
+        onPress={onPress}
+        style={styles.item}>
+        <View style={[styles.icon, focused && styles.iconActive]}>
+          <Icon name={ICONS[route.name] ?? 'inbox'} size={22} color={color} />
+        </View>
+        <Text style={[styles.label, { color }]} numberOfLines={1}>
+          {name}
+        </Text>
+      </Pressable>
+    );
+  }
+
   return (
     <View pointerEvents="box-none" style={[styles.wrap, composing && styles.wrapOpen, composing && { bottom: keyboard }]}>
       {composing ? (
@@ -48,50 +84,22 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
           <QuickAdd onClose={() => setComposing(false)} bottomInset={keyboard > 0 ? 8 : Math.max(insets.bottom, 8)} />
         </>
       ) : null}
-      {showAdd && !composing ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={text.addTask}
-          onPress={() => setComposing(true)}
-          style={({ pressed }) => [styles.fab, { bottom: Math.max(insets.bottom, 8) + 64 }, pressed && styles.pressed]}>
-          <Icon name="plus" size={28} color={Night.text} />
-        </Pressable>
-      ) : null}
       {composing ? null : (
       <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         <View style={styles.row}>
-          {routes.map((route) => {
-            const focused = route.key === focusedKey;
-            const { options } = descriptors[route.key];
-            const label = options.title ?? route.name;
-            const name = typeof label === 'string' ? label : route.name;
-            const color = focused ? Night.accent : Night.muted;
-            const onPress = () => {
-              const event = emitter.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-              if (event.defaultPrevented) return;
-              if (!focused) navigateToTab(route.key);
-            };
-            return (
+          {left.map((route) => renderTab(route))}
+          {showAdd ? (
+            <View style={styles.fabSlot}>
               <Pressable
-                key={route.key}
-                accessibilityRole="tab"
-                accessibilityLabel={name}
-                accessibilityState={{ selected: focused }}
-                onPress={onPress}
-                style={styles.item}>
-                <View style={[styles.icon, focused && styles.iconActive]}>
-                  <Icon name={ICONS[route.name] ?? 'inbox'} size={22} color={color} />
-                </View>
-                <Text style={[styles.label, { color }]} numberOfLines={1}>
-                  {name}
-                </Text>
+                accessibilityRole="button"
+                accessibilityLabel={text.addTask}
+                onPress={() => setComposing(true)}
+                style={({ pressed }) => [styles.fab, pressed && styles.pressed]}>
+                <Icon name="plus" size={28} color={Night.text} />
               </Pressable>
-            );
-          })}
+            </View>
+          ) : null}
+          {right.map((route) => renderTab(route))}
         </View>
       </View>
       )}
@@ -149,9 +157,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 600,
   },
+  fabSlot: {
+    width: 72,
+    height: 54,
+    alignItems: 'center',
+  },
   fab: {
     position: 'absolute',
-    right: 18,
+    top: -18,
     width: 56,
     height: 56,
     borderRadius: 18,
