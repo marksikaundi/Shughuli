@@ -1,85 +1,117 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconButton } from '@/components/icon';
-import { Screen } from '@/components/screen';
-import { Layout } from '@/constants/palette';
-import { useScreenStatusBar, useSettingsTheme } from '@/hooks/use-settings-theme';
+import { Icon } from '@/components/icon';
+import { Screen, useNightStatus } from '@/components/screen';
+import { Night } from '@/constants/night';
 import { en, type SettingsCopy } from '@/i18n/messages';
 import { getCatalogId, useCopy } from '@/lib/settings-copy';
 
+type Block = { title?: string; body: string };
+
 export default function LegalScreen() {
+  useNightStatus();
   const insets = useSafeAreaInsets();
-  const theme = useSettingsTheme();
   const text = useCopy();
   const params = useLocalSearchParams<{ doc?: string }>();
-  const page = pageFor(typeof params.doc === 'string' ? params.doc : 'privacy', text);
-  const english = pageFor(typeof params.doc === 'string' ? params.doc : 'privacy', en);
-  const showingEnglish = getCatalogId() !== 'en' && page.body === english.body;
-  useScreenStatusBar(theme.dark);
+  const doc = typeof params.doc === 'string' ? params.doc : 'privacy';
+  const page = pageFor(doc, text);
+  const english = pageFor(doc, en);
+  const showingEnglish = getCatalogId() !== 'en' && page.blocks.map((block) => block.body).join('\n') === english.blocks.map((block) => block.body).join('\n');
 
   return (
-    <Screen>
-      {theme.dark ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.canvas }]} /> : null}
+    <Screen tone="night">
       <ScrollView
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top + 8,
-          paddingBottom: insets.bottom + 28,
-          paddingHorizontal: Layout.padding,
+          paddingBottom: insets.bottom + 36,
+          paddingHorizontal: 16,
         }}>
         <View style={styles.header}>
-          <IconButton icon="back" accessibilityLabel={text.close} onPress={() => router.back()} />
-          <Text style={[styles.title, { color: theme.colors.ink, fontSize: 28 * theme.scale }]}>{page.title}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={text.close} onPress={() => router.back()} style={styles.back}>
+            <Icon name="back" size={18} color={Night.text} />
+          </Pressable>
+          <Text style={styles.title} numberOfLines={2}>
+            {page.title}
+          </Text>
+          <View style={styles.backSpacer} />
         </View>
-        {showingEnglish ? (
-          <Text style={[styles.note, { color: theme.colors.muted, fontSize: 14 * theme.scale }]}>{text.legalEnglishNote}</Text>
-        ) : null}
-        <Text style={[styles.body, { color: theme.colors.ink, fontSize: 16 * theme.scale, lineHeight: 24 * theme.scale }]}>{page.body}</Text>
+
+        {showingEnglish ? <Text style={styles.note}>{text.legalEnglishNote}</Text> : null}
+
+        {page.blocks.map((block) => (
+          <View key={block.title ?? block.body.slice(0, 24)} style={styles.card}>
+            {block.title ? <Text style={styles.cardTitle}>{block.title}</Text> : null}
+            <Text style={styles.body}>{block.body}</Text>
+          </View>
+        ))}
       </ScrollView>
     </Screen>
   );
 }
 
-function pageFor(doc: string, text: SettingsCopy) {
-  if (doc === 'terms') return { title: text.terms, body: text.termsBody };
-  if (doc === 'security') return { title: text.securityPolicy, body: text.securityBody };
-  if (doc === 'licenses') return { title: text.acknowledgments, body: text.licensesIntro };
-  if (doc === 'changelog') return { title: text.viewChangelog, body: changelog(text) };
-  if (doc === 'website') return { title: text.visitSite, body: text.websiteBody };
-  if (doc === 'inspiration') return { title: text.visitInspiration, body: `${text.aboutMeaning}\n\n${text.aboutBody}` };
-  if (doc === 'hiring') return { title: text.weAreHiring, body: text.hiringBody };
-  return { title: text.privacyPolicy, body: text.privacyBody };
-}
-
-function changelog(text: SettingsCopy) {
-  return [
-    text.whatsNewBody,
-    text.aboutMeaning,
-    text.aboutBody,
-    `${text.aboutDayTitle}\n${text.aboutDayBody}`,
-    `${text.aboutDeviceTitle}\n${text.aboutDeviceBody}`,
-    `${text.aboutRemindersTitle}\n${text.aboutRemindersBody}`,
-    `${text.aboutCopyTitle}\n${text.aboutCopyBody}`,
-  ].join('\n\n');
+function pageFor(doc: string, text: SettingsCopy): { title: string; blocks: Block[] } {
+  if (doc === 'terms') return { title: text.termsOfService, blocks: [{ body: text.termsBody }] };
+  if (doc === 'security') return { title: text.securityPolicy, blocks: [{ body: text.securityBody }] };
+  if (doc === 'licenses') return { title: text.acknowledgments, blocks: [{ body: text.licensesIntro }] };
+  if (doc === 'website') return { title: text.visitSite, blocks: [{ body: text.websiteBody }] };
+  if (doc === 'inspiration') return { title: text.visitInspiration, blocks: [{ body: `${text.aboutMeaning}\n\n${text.aboutBody}` }] };
+  if (doc === 'hiring') return { title: text.weAreHiring, blocks: [{ body: text.hiringBody }] };
+  return { title: text.privacyPolicy, blocks: [{ body: text.privacyBody }] };
 }
 
 const styles = StyleSheet.create({
   header: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+  },
+  back: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#3A3A3A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backSpacer: {
+    width: 36,
+    height: 36,
   },
   title: {
     flex: 1,
+    color: Night.text,
+    fontSize: 17,
     fontWeight: 700,
-    letterSpacing: -0.6,
+    textAlign: 'center',
   },
   note: {
-    marginTop: 16,
+    marginTop: 18,
+    color: Night.muted,
+    fontSize: 14,
     fontWeight: 600,
+    textAlign: 'center',
+  },
+  card: {
+    marginTop: 18,
+    borderRadius: 16,
+    backgroundColor: Night.row,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  cardTitle: {
+    marginBottom: 6,
+    color: Night.text,
+    fontSize: 16,
+    fontWeight: 700,
   },
   body: {
-    marginTop: 12,
+    color: Night.text,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: 500,
   },
 });

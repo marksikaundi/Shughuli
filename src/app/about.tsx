@@ -38,10 +38,6 @@ export default function AboutScreen() {
         {build ? <Text style={styles.build}>({build})</Text> : null}
 
         <View style={styles.card}>
-          <AboutRow label={text.viewChangelog} onPress={() => openDoc('changelog')} last />
-        </View>
-
-        <View style={styles.card}>
           <AboutRow label={text.visitSite} onPress={() => openDoc('website')} />
           <AboutRow label={text.visitInspiration} onPress={() => openDoc('inspiration')} />
           <AboutRow label={text.weAreHiring} onPress={() => openDoc('hiring')} last />
