@@ -66,7 +66,7 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
         accessibilityState={{ selected: focused }}
         onPress={onPress}
         style={styles.item}>
-        <View style={[styles.icon, focused && styles.iconActive]}>
+        <View style={styles.icon}>
           <Icon name={ICONS[route.name] ?? 'inbox'} size={22} color={color} />
         </View>
         <Text style={[styles.label, { color }]} numberOfLines={1}>
@@ -149,9 +149,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconActive: {
-    backgroundColor: Night.accentSoft,
   },
   label: {
     fontSize: 11,
