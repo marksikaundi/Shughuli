@@ -31,6 +31,8 @@ const ICONS = {
   sun: { ios: 'sun.max.fill', android: 'sunny', web: 'sunny' },
   arrow: { ios: 'arrow.up.right', android: 'north_east', web: 'north_east' },
   forward: { ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' },
+  up: { ios: 'arrow.up', android: 'arrow_upward', web: 'arrow_upward' },
+  weekend: { ios: 'sofa.fill', android: 'weekend', web: 'weekend' },
   video: { ios: 'video.fill', android: 'video_call', web: 'video_call' },
   folder: { ios: 'folder.fill', android: 'folder', web: 'folder' },
   tag: { ios: 'tag.fill', android: 'sell', web: 'sell' },
