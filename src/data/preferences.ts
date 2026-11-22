@@ -49,6 +49,7 @@ export type Preferences = {
   dailyPlanning: boolean;
   focusNotifications: boolean;
   endOfDayReview: boolean;
+  onboardingAssistant: boolean;
   notificationSound: ReminderSound;
   notificationVibration: boolean;
   workMinutes: number;
@@ -104,6 +105,7 @@ export const defaultPreferences: Preferences = {
   dailyPlanning: false,
   focusNotifications: true,
   endOfDayReview: false,
+  onboardingAssistant: false,
   notificationSound: 'system',
   notificationVibration: true,
   workMinutes: 25,
@@ -188,6 +190,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     dailyPlanning: bool(input.dailyPlanning, defaultPreferences.dailyPlanning),
     focusNotifications: bool(input.focusNotifications, defaultPreferences.focusNotifications),
     endOfDayReview: bool(input.endOfDayReview, defaultPreferences.endOfDayReview),
+    onboardingAssistant: bool(input.onboardingAssistant, defaultPreferences.onboardingAssistant),
     notificationSound: soundChoice(input.notificationSound),
     notificationVibration: bool(input.notificationVibration, defaultPreferences.notificationVibration),
     workMinutes: clamp(input.workMinutes, 15, 60, defaultPreferences.workMinutes),

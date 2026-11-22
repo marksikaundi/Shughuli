@@ -9,7 +9,7 @@ import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
 import { useCopy } from '@/lib/settings-copy';
 
-export function NightPage({ title, children }: { title: string; children: ReactNode }) {
+export function NightPage({ title, children, onBack }: { title: string; children: ReactNode; onBack?: () => void }) {
   useNightStatus();
   const insets = useSafeAreaInsets();
   const text = useCopy();
@@ -24,7 +24,7 @@ export function NightPage({ title, children }: { title: string; children: ReactN
           paddingHorizontal: 16,
         }}>
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel={text.close} onPress={() => router.back()} style={styles.back}>
+          <Pressable accessibilityRole="button" accessibilityLabel={text.close} onPress={() => (onBack ? onBack() : router.back())} style={styles.back}>
             <Icon name="back" size={18} color={Night.text} />
           </Pressable>
           <Text style={styles.title} numberOfLines={2}>
