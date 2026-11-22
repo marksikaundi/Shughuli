@@ -1,92 +1,153 @@
-import { router } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconButton } from '@/components/icon';
-import { Screen } from '@/components/screen';
-import { Layout, cardShadow } from '@/constants/palette';
-import { useScreenStatusBar, useSettingsTheme } from '@/hooks/use-settings-theme';
+import { Icon } from '@/components/icon';
+import { Screen, useNightStatus } from '@/components/screen';
+import { Night } from '@/constants/night';
 import { useCopy } from '@/lib/settings-copy';
 
 export default function AboutScreen() {
+  useNightStatus();
   const insets = useSafeAreaInsets();
-  const theme = useSettingsTheme();
   const text = useCopy();
-  useScreenStatusBar(theme.dark);
   const version = Constants.expoConfig?.version ?? '1.0.0';
-  const sections = [
-    { title: text.aboutDayTitle, body: text.aboutDayBody },
-    { title: text.aboutDeviceTitle, body: text.aboutDeviceBody },
-    { title: text.aboutRemindersTitle, body: text.aboutRemindersBody },
-    { title: text.aboutCopyTitle, body: text.aboutCopyBody },
-  ];
+  const iosBuild = Constants.platform?.ios?.buildNumber;
+  const androidBuild = Constants.platform?.android?.versionCode;
+  const build = iosBuild || (androidBuild ? String(androidBuild) : '');
 
   return (
-    <Screen>
-      {theme.dark ? <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.canvas }]} /> : null}
+    <Screen tone="night">
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top + 8,
           paddingBottom: insets.bottom + 36,
-          paddingHorizontal: Layout.padding,
+          paddingHorizontal: 16,
         }}>
-        <IconButton icon="back" accessibilityLabel={text.close} onPress={() => router.back()} />
-        <Text style={[styles.name, { color: theme.colors.ink, fontSize: 40 * theme.scale }]}>Shughuli</Text>
-        <Text style={[styles.meaning, { color: theme.colors.ink, fontSize: 17 * theme.scale, lineHeight: 24 * theme.scale }]}>{text.aboutMeaning}</Text>
-        <Text style={[styles.lead, { color: theme.colors.muted, fontSize: 16 * theme.scale, lineHeight: 24 * theme.scale }]}>{text.aboutBody}</Text>
-        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-          {sections.map((section, index) => (
-            <View
-              key={section.title}
-              style={[
-                styles.section,
-                index < sections.length - 1 && { borderBottomColor: theme.colors.line, borderBottomWidth: StyleSheet.hairlineWidth },
-              ]}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.ink, fontSize: 16 * theme.scale }]}>{section.title}</Text>
-              <Text style={[styles.sectionBody, { color: theme.colors.muted, fontSize: 15 * theme.scale, lineHeight: 22 * theme.scale }]}>{section.body}</Text>
-            </View>
-          ))}
+        <View style={styles.header}>
+          <Pressable accessibilityRole="button" accessibilityLabel={text.close} onPress={() => router.back()} style={styles.back}>
+            <Icon name="back" size={18} color={Night.text} />
+          </Pressable>
+          <Text style={styles.title}>{text.aboutRow}</Text>
+          <View style={styles.backSpacer} />
         </View>
-        <Text style={[styles.version, { color: theme.colors.faint, fontSize: 13 * theme.scale }]}>
-          {text.version} {version}
-        </Text>
+
+        <Text style={styles.version}>Shughuli {version}</Text>
+        {build ? <Text style={styles.build}>({build})</Text> : null}
+
+        <View style={styles.card}>
+          <AboutRow label={text.viewChangelog} onPress={() => openDoc('changelog')} last />
+        </View>
+
+        <View style={styles.card}>
+          <AboutRow label={text.visitSite} onPress={() => openDoc('website')} />
+          <AboutRow label={text.visitInspiration} onPress={() => openDoc('inspiration')} />
+          <AboutRow label={text.weAreHiring} onPress={() => openDoc('hiring')} last />
+        </View>
+
+        <Text style={styles.section}>{text.legalSection}</Text>
+        <View style={styles.card}>
+          <AboutRow label={text.acknowledgments} onPress={() => openDoc('licenses')} />
+          <AboutRow label={text.privacyPolicy} onPress={() => openDoc('privacy')} />
+          <AboutRow label={text.securityPolicy} onPress={() => openDoc('security')} />
+          <AboutRow label={text.termsOfService} onPress={() => openDoc('terms')} last />
+        </View>
       </ScrollView>
     </Screen>
   );
 }
 
+function openDoc(doc: string) {
+  router.push({ pathname: '/legal', params: { doc } });
+}
+
+function AboutRow({ label, onPress, last = false }: { label: string; onPress: () => void; last?: boolean }) {
+  return (
+    <View>
+      <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+        <Text style={styles.rowLabel} numberOfLines={1}>
+          {label}
+        </Text>
+        <Icon name="chevron" size={16} color={Night.faint} />
+      </Pressable>
+      {last ? null : <View style={styles.line} />}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  name: {
-    marginTop: 28,
+  header: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  back: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#3A3A3A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backSpacer: {
+    width: 36,
+    height: 36,
+  },
+  title: {
+    color: Night.text,
+    fontSize: 17,
     fontWeight: 700,
-    letterSpacing: -1.2,
-  },
-  meaning: {
-    marginTop: 14,
-    fontWeight: 600,
-  },
-  lead: {
-    marginTop: 10,
-  },
-  card: {
-    marginTop: 28,
-    borderRadius: 24,
-    ...cardShadow,
-  },
-  section: {
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-  },
-  sectionTitle: {
-    fontWeight: 700,
-  },
-  sectionBody: {
-    marginTop: 4,
   },
   version: {
-    marginTop: 22,
+    marginTop: 28,
+    color: Night.text,
+    fontSize: 17,
     fontWeight: 600,
+    textAlign: 'center',
+  },
+  build: {
+    marginTop: 4,
+    color: Night.muted,
+    fontSize: 15,
+    fontWeight: 500,
+    textAlign: 'center',
+  },
+  card: {
+    marginTop: 22,
+    borderRadius: 16,
+    backgroundColor: Night.row,
+    overflow: 'hidden',
+  },
+  section: {
+    marginTop: 26,
+    marginBottom: -8,
+    marginLeft: 4,
+    color: Night.muted,
+    fontSize: 16,
+    fontWeight: 600,
+  },
+  row: {
+    minHeight: 52,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rowLabel: {
+    flex: 1,
+    color: Night.text,
+    fontSize: 16,
+    fontWeight: 500,
+  },
+  line: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 16,
+    backgroundColor: '#3A3A3A',
+  },
+  pressed: {
+    opacity: 0.72,
   },
 });
