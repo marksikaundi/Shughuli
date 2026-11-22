@@ -1,7 +1,7 @@
 import { usePathname } from 'expo-router';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { useEffect, useRef, useState } from 'react';
-import { Dimensions, Keyboard, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Keyboard, PanResponder, Platform, Pressable, StyleSheet, Text, View, type KeyboardEvent } from 'react-native';
 
 import { Icon, type IconName } from '@/components/icon';
 import { QuickAdd } from '@/components/quick-add';
@@ -75,13 +75,12 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const show = Keyboard.addListener(showEvent, (event) => {
-      const overlap = Dimensions.get('window').height - event.endCoordinates.screenY;
-      setKeyboard(Math.max(0, overlap));
-    });
+    const show = Keyboard.addListener(showEvent, (event) => setKeyboard(keyboardInset(event)));
+    const didShow = Keyboard.addListener('keyboardDidShow', (event) => setKeyboard(keyboardInset(event)));
     const hide = Keyboard.addListener(hideEvent, () => setKeyboard(0));
     return () => {
       show.remove();
+      didShow.remove();
       hide.remove();
     };
   }, []);
@@ -132,11 +131,11 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
         setSpot(next);
         placed.current = true;
       }}
-      style={[styles.overlay, composing && { bottom: keyboard }]}>
+      style={styles.overlay}>
       {composing ? (
         <>
           <Pressable style={styles.backdrop} onPress={() => setComposing(false)} />
-          <View style={styles.composer}>
+          <View style={[styles.composer, { bottom: keyboard }]}>
             <QuickAdd onClose={() => setComposing(false)} bottomInset={keyboard > 0 ? 8 : Math.max(insets.bottom, 8)} />
           </View>
         </>
@@ -163,6 +162,12 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
 }
 
 const FAB = 56;
+
+function keyboardInset(event: KeyboardEvent) {
+  const overlap = Dimensions.get('window').height - event.endCoordinates.screenY;
+  if (overlap > 0) return Math.max(overlap, event.endCoordinates.height);
+  return Platform.OS === 'android' ? Math.max(0, event.endCoordinates.height) : 0;
+}
 
 function placeFab(x: number, y: number, snapRight: boolean, width = Dimensions.get('window').width, height = Dimensions.get('window').height) {
   const margin = 16;
