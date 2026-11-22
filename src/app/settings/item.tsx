@@ -294,41 +294,40 @@ function QuickAddPanel() {
 
   return (
     <NightPage title={text.quickAdd}>
-      <View style={styles.syncCard}>
-        <View style={styles.optionRow}>
-          <Text style={styles.syncLabel}>{text.showActionLabels}</Text>
+      <View style={styles.quickTop}>
+        <View style={styles.quickRow}>
+          <Text style={styles.quickLabel}>{text.showActionLabels}</Text>
           <Switch
             accessibilityLabel={text.showActionLabels}
             value={prefs.quickAddLabels}
             onValueChange={(quickAddLabels) => void save({ quickAddLabels })}
-            trackColor={{ false: '#3A3A3A', true: Night.accent }}
-            thumbColor={Night.text}
+            trackColor={{ false: '#636366', true: Night.accent }}
+            thumbColor="#FFFFFF"
           />
         </View>
-        <View style={styles.optionLine} />
-        <View style={styles.optionRow}>
-          <Text style={styles.syncLabel}>{text.showDescription}</Text>
+        <View style={styles.quickLine} />
+        <View style={styles.quickRow}>
+          <Text style={styles.quickLabel}>{text.showDescription}</Text>
           <Switch
             accessibilityLabel={text.showDescription}
             value={prefs.quickAddDescription}
             onValueChange={(quickAddDescription) => void save({ quickAddDescription })}
-            trackColor={{ false: '#3A3A3A', true: Night.accent }}
-            thumbColor={Night.text}
+            trackColor={{ false: '#636366', true: Night.accent }}
+            thumbColor="#FFFFFF"
           />
         </View>
-      </View>
-
-      <Text style={styles.taskName}>{text.taskName}</Text>
-      <View style={styles.previewChips}>
-        <View style={styles.previewPlus}>
-          <Text style={styles.previewGlyph}>+</Text>
-        </View>
-        {included.map((id) => (
-          <View key={id} style={[styles.previewChip, !prefs.quickAddLabels && styles.previewChipIcon]}>
-            <ActionMark id={id} />
-            {prefs.quickAddLabels ? <Text style={styles.previewChipText}>{names[id]}</Text> : null}
+        <Text style={styles.taskName}>{text.taskName}</Text>
+        <View style={styles.previewChips}>
+          <View style={styles.previewPlus}>
+            <Text style={styles.previewGlyph}>+</Text>
           </View>
-        ))}
+          {included.map((id) => (
+            <View key={id} style={[styles.previewChip, !prefs.quickAddLabels && styles.previewChipIcon]}>
+              <ActionMark id={id} />
+              {prefs.quickAddLabels ? <Text style={styles.previewChipText}>{names[id]}</Text> : null}
+            </View>
+          ))}
+        </View>
       </View>
 
       <Text style={styles.actionHeading}>{text.includedTaskActions}</Text>
@@ -709,24 +708,48 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     backgroundColor: '#3A3A3A',
   },
-  taskName: {
+  quickTop: {
     marginTop: 18,
-    marginLeft: 4,
-    color: '#8E8E93',
-    fontSize: 15,
+    borderRadius: 16,
+    backgroundColor: '#2C2C2E',
+    paddingBottom: 16,
+    overflow: 'hidden',
+  },
+  quickRow: {
+    minHeight: 52,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  quickLabel: {
+    flex: 1,
+    color: '#F2F2F2',
+    fontSize: 17,
+    fontWeight: 400,
+  },
+  quickLine: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#3A3A3C',
+  },
+  taskName: {
+    marginTop: 16,
+    marginHorizontal: 16,
+    color: '#F2F2F2',
+    fontSize: 16,
     fontWeight: 500,
   },
   previewChips: {
-    marginTop: 8,
+    marginTop: 12,
+    marginHorizontal: 16,
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 8,
   },
   previewPlus: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#3A3A3C',
     alignItems: 'center',
     justifyContent: 'center',
@@ -738,8 +761,8 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
   previewChip: {
-    height: 34,
-    borderRadius: 17,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#3A3A3C',
     paddingHorizontal: 12,
     flexDirection: 'row',
