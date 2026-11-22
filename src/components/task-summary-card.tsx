@@ -4,14 +4,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon } from '@/components/icon';
 import { Palette, cardShadow } from '@/constants/palette';
 import { PEOPLE, type PersonId } from '@/data/people';
-import { formatClock, toDateKey, type Task } from '@/data/tasks';
+import { formatClock, todayKey, type Task } from '@/data/tasks';
 import { fill, useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
 export function TaskSummaryCard({ task }: { task: Task }) {
   const text = useCopy();
   const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
-  const today = toDateKey(new Date());
+  const today = todayKey();
   const kind = task.kind === 'meeting' ? text.meet : task.category === 'personal' ? text.categoryPersonal : text.work;
   const day = task.date === today ? text.today : task.date === shift(today, 1) ? text.tomorrow : task.date === shift(today, -1) ? text.yesterday : task.date;
   const place = task.project.trim();

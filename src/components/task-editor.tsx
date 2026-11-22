@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '@/components/icon';
 import { TaskDateSheet } from '@/components/quick-add';
 import { Night } from '@/constants/night';
-import { formatClock, toDateKey, useTasks, type Priority, type Subtask, type Task, type TaskComment } from '@/data/tasks';
+import { formatClock, toDateKey, todayKey, useTasks, type Priority, type Subtask, type Task, type TaskComment } from '@/data/tasks';
 import { useProjects } from '@/data/projects';
 import { useSections } from '@/store/sections';
 import { formatLocale } from '@/i18n/format';
@@ -53,7 +53,7 @@ export function TaskEditor({ task }: { task: Task }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState(false);
-  const today = toDateKey(new Date());
+  const today = todayKey();
   const tomorrow = shiftKey(today, 1);
   const dateLabel = date === today ? text.today : date === tomorrow ? text.tomorrow : formatLocale(keyToDate(date), { day: 'numeric', month: 'short' });
 

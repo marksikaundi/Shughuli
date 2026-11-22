@@ -15,6 +15,11 @@ export type RuntimePrefs = {
   hideSensitive: boolean;
   snoozeMinutes: number;
   urgentAlerts: 'off' | 'time';
+  timeZone: string;
+  nextWeekday: number;
+  weekendDay: number;
+  resetSubtasks: boolean;
+  completeTone: 'none' | 'chime' | 'bell';
 };
 
 const runtime: RuntimePrefs = {
@@ -28,6 +33,11 @@ const runtime: RuntimePrefs = {
   hideSensitive: false,
   snoozeMinutes: 15,
   urgentAlerts: 'off',
+  timeZone: '',
+  nextWeekday: 1,
+  weekendDay: 6,
+  resetSubtasks: true,
+  completeTone: 'chime',
 };
 
 export function getRuntimePrefs() {

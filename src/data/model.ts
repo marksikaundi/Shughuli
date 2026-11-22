@@ -53,6 +53,21 @@ export type TaskDraft = {
   sectionId?: string | null;
 };
 
+export function todayKey() {
+  const zone = getRuntimePrefs().timeZone;
+  if (!zone) return toDateKey(new Date());
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const year = parts.find((part) => part.type === 'year')?.value;
+    const month = parts.find((part) => part.type === 'month')?.value;
+    const day = parts.find((part) => part.type === 'day')?.value;
+    if (year && month && day) return `${year}-${month}-${day}`;
+  } catch {
+    // An unknown zone falls back to the phone clock.
+  }
+  return toDateKey(new Date());
+}
+
 export function toDateKey(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');

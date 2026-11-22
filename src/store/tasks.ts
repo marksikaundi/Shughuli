@@ -11,6 +11,7 @@ import type { PersonId } from '@/data/people';
 import { deleteAllNotes, deleteTaskNote, saveTaskNote } from '@/lib/notes';
 import { clearSyncedEvents, removeTaskFromCalendar, syncAllTasks, syncTaskToCalendar } from '@/lib/google-calendar';
 import { prepareReminders, scheduleTaskReminder } from '@/lib/reminders';
+import { playCompleteTone } from '@/lib/complete-tone';
 import { getRuntimePrefs } from '@/lib/runtime-prefs';
 
 const SAMPLE_TASK_IDS = [
@@ -83,7 +84,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const current = get().tasks.find((item) => item.id === id);
     if (!current) throw new Error(getCopy().taskGoneError);
     if (current.status === status) return;
-    const task = { ...current, status };
+    const prefs = getRuntimePrefs();
+    const subtasks = status === 'done' && prefs.resetSubtasks ? current.subtasks.map((item) => ({ ...item, done: false })) : current.subtasks;
+    const task = { ...current, status, subtasks };
+    if (status === 'done') void playCompleteTone(prefs.completeTone);
     await persistTask(task, 'update');
     set({ tasks: get().tasks.map((item) => (item.id === id ? task : item)) });
   },

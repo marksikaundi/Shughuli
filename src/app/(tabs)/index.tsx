@@ -11,7 +11,7 @@ import { TaskLine } from '@/components/task-line';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
 import { defaultInboxDisplay, type InboxDisplay, type InboxSorting, type InboxSpan } from '@/data/inbox-display';
-import { toDateKey, type Task } from '@/data/model';
+import { todayKey, type Task } from '@/data/model';
 import { formatLocale } from '@/i18n/format';
 import { useCopy } from '@/lib/settings-copy';
 import { type Section, useSections } from '@/store/sections';
@@ -28,8 +28,8 @@ export default function InboxScreen() {
   const [displayOpen, setDisplayOpen] = useState(false);
   const [sectionOpen, setSectionOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState(() => toDateKey(new Date()));
-  const today = toDateKey(new Date());
+  const [selectedDay, setSelectedDay] = useState(() => todayKey());
+  const today = todayKey();
 
   const inbox = useMemo(() => {
     const visible = tasks.filter((task) => {

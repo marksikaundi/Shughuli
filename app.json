@@ -125,7 +125,8 @@
             "ca"
           ]
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true,

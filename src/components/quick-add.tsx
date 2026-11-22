@@ -15,7 +15,7 @@ import { Icon, type IconName } from '@/components/icon';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
 import type { Priority } from '@/data/model';
-import { formatClock, startOfWeek, toDateKey, useTasks } from '@/data/tasks';
+import { formatClock, startOfWeek, toDateKey, todayKey, useTasks } from '@/data/tasks';
 import { useProjects } from '@/data/projects';
 import { formatLocale, formatMonthYear } from '@/i18n/format';
 import { fill, useCopy } from '@/lib/settings-copy';
@@ -38,14 +38,14 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
   const [title, setTitle] = useState('');
   const [project, setProject] = useState('');
   const [priority, setPriority] = useState<Priority>(priorityDefault);
-  const [date, setDate] = useState(() => toDateKey(new Date()));
+  const [date, setDate] = useState(() => todayKey());
   const [dateChosen, setDateChosen] = useState(false);
   const [time, setTime] = useState<string | null>(null);
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const today = toDateKey(new Date());
+  const today = todayKey();
   const tomorrow = shiftKey(today, 1);
   const ready = title.trim().length > 0;
 
@@ -224,9 +224,13 @@ export function TaskDateSheet({
 }) {
   const text = useCopy();
   const insets = useSafeAreaInsets();
-  const today = toDateKey(new Date());
+  const detectDates = usePreferencesStore((state) => state.prefs.detectDates);
+  const nextWeekday = usePreferencesStore((state) => state.prefs.nextWeekday);
+  const weekendDay = usePreferencesStore((state) => state.prefs.weekendDay);
+  const today = todayKey();
   const tomorrow = shiftKey(today, 1);
-  const weekend = toDateKey(nextWeekend(new Date()));
+  const weekend = toDateKey(upcomingWeekday(new Date(), weekendDay));
+  const nextWeek = toDateKey(upcomingWeekday(new Date(), nextWeekday));
   const [draftDate, setDraftDate] = useState(date);
   const [draftTime, setDraftTime] = useState<string | null>(time);
   const [phrase, setPhrase] = useState(() => phraseFor(date, time, today, tomorrow, weekend, timeFormat, text));
@@ -254,13 +258,16 @@ export function TaskDateSheet({
   }, []);
 
   function applyPhrase(raw: string) {
+    if (!detectDates) return;
     const parsed = parseWhen(raw, {
       today,
       tomorrow,
       weekend,
+      nextWeek,
       todayWord: text.today,
       tomorrowWord: text.tomorrow,
       weekendWord: text.nextWeekend,
+      nextWeekWord: text.nextWeekPhrase,
     });
     if (!parsed) return;
     if (parsed.date) setDraftDate(parsed.date);
@@ -416,13 +423,14 @@ function phraseFor(
 
 function parseWhen(
   raw: string,
-  words: { today: string; tomorrow: string; weekend: string; todayWord: string; tomorrowWord: string; weekendWord: string },
+  words: { today: string; tomorrow: string; weekend: string; nextWeek: string; todayWord: string; tomorrowWord: string; weekendWord: string; nextWeekWord: string },
 ) {
   const value = raw.trim().toLowerCase();
   if (!value) return null;
   let date: string | undefined;
   if (hasWord(value, words.todayWord) || /\btoday\b/.test(value)) date = words.today;
   else if (hasWord(value, words.tomorrowWord) || /\btomorrow\b/.test(value)) date = words.tomorrow;
+  else if (hasWord(value, words.nextWeekWord) || /\bnext week\b/.test(value)) date = words.nextWeek;
   else if (hasWord(value, words.weekendWord) || /weekend/.test(value)) date = words.weekend;
 
   const timeMatch =
@@ -472,10 +480,9 @@ function monthDays(cursor: Date, weekStartsOn: WeekStart) {
   });
 }
 
-function nextWeekend(from: Date) {
+function upcomingWeekday(from: Date, weekday: number) {
   const date = new Date(from);
-  const day = date.getDay();
-  const add = day === 6 ? 7 : (6 - day + 7) % 7;
+  const add = (weekday - date.getDay() + 7) % 7 || 7;
   date.setDate(date.getDate() + add);
   return date;
 }

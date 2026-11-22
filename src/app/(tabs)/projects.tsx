@@ -8,7 +8,7 @@ import { Screen, useNightStatus } from '@/components/screen';
 import { TaskLine } from '@/components/task-line';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
-import { toDateKey, useTasks, type Task } from '@/data/tasks';
+import { todayKey, useTasks, type Task } from '@/data/tasks';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
@@ -19,7 +19,7 @@ export default function TodayScreen() {
   const { tasks, setTaskStatus } = useTasks();
   const visibility = usePreferencesStore((state) => state.prefs.completedVisibility);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const today = toDateKey(new Date());
+  const today = todayKey();
 
   const items = useMemo(() => {
     return tasks

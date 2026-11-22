@@ -1,10 +1,12 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef } from 'react';
+import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { Night } from '@/constants/night';
-import { toDateKey, type Task } from '@/data/tasks';
+import { todayKey, type Task } from '@/data/tasks';
 import { formatLocale } from '@/i18n/format';
 import { useCopy } from '@/lib/settings-copy';
+import { usePreferencesStore } from '@/store/preferences';
 
 export function TaskLine({
   task,
@@ -20,8 +22,29 @@ export function TaskLine({
   showMark?: boolean;
 }) {
   const text = useCopy();
+  const drag = useRef(new Animated.Value(0)).current;
+  const actions = useRef({ onToggle, onOpen });
+  actions.current = { onToggle, onOpen };
+  const pan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 18 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+      onPanResponderMove: (_, gesture) => {
+        drag.setValue(gesture.dx);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        const prefs = usePreferencesStore.getState().prefs;
+        const action = gesture.dx > 72 ? prefs.rightSwipe : gesture.dx < -72 ? prefs.leftSwipe : 'none';
+        if (action === 'complete') actions.current.onToggle();
+        else if (action === 'schedule' || action === 'select') actions.current.onOpen();
+        Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start();
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(drag, { toValue: 0, useNativeDriver: true }).start();
+      },
+    }),
+  ).current;
   const done = task.status === 'done';
-  const today = toDateKey(new Date());
+  const today = todayKey();
   const soon = daysUntil(task.date);
   const dateLabel =
     task.date === today
@@ -33,7 +56,7 @@ export function TaskLine({
   const border = Night.faint;
 
   return (
-    <View style={styles.row}>
+    <Animated.View style={[styles.row, { transform: [{ translateX: drag }] }]} {...pan.panHandlers}>
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: done, disabled: busy }}
@@ -53,7 +76,7 @@ export function TaskLine({
           <Text style={[styles.whenText, { color: dateColor }]}>{dateLabel}</Text>
         </View>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 

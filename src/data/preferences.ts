@@ -80,6 +80,18 @@ export type Preferences = {
   quickAddPriority: boolean;
   quickAddProject: boolean;
   quickAddDate: boolean;
+  homeView: 'inbox' | 'today' | 'upcoming';
+  syncHomeView: boolean;
+  detectDates: boolean;
+  resetSubtasks: boolean;
+  autoAcceptInvites: boolean;
+  timeZone: string;
+  nextWeekday: number;
+  weekendDay: number;
+  webLinks: 'app' | 'browser';
+  completeTone: 'none' | 'chime' | 'bell';
+  rightSwipe: 'select' | 'schedule' | 'complete' | 'none';
+  leftSwipe: 'select' | 'schedule' | 'complete' | 'none';
 };
 
 export const defaultPreferences: Preferences = {
@@ -136,6 +148,18 @@ export const defaultPreferences: Preferences = {
   quickAddPriority: true,
   quickAddProject: true,
   quickAddDate: true,
+  homeView: 'today',
+  syncHomeView: true,
+  detectDates: true,
+  resetSubtasks: true,
+  autoAcceptInvites: true,
+  timeZone: '',
+  nextWeekday: 1,
+  weekendDay: 6,
+  webLinks: 'app',
+  completeTone: 'chime',
+  rightSwipe: 'select',
+  leftSwipe: 'schedule',
 };
 
 export function accentById(id: AccentId) {
@@ -158,6 +182,11 @@ export function runtimeFromPreferences(prefs: Preferences): RuntimePrefs {
     hideSensitive: prefs.hideSensitive,
     snoozeMinutes: prefs.snoozeMinutes,
     urgentAlerts: prefs.urgentAlerts,
+    timeZone: prefs.timeZone,
+    nextWeekday: prefs.nextWeekday,
+    weekendDay: prefs.weekendDay,
+    resetSubtasks: prefs.resetSubtasks,
+    completeTone: prefs.completeTone,
   };
 }
 
@@ -221,6 +250,18 @@ export function sanitizePreferences(value: unknown): Preferences {
     quickAddPriority: bool(input.quickAddPriority, defaultPreferences.quickAddPriority),
     quickAddProject: bool(input.quickAddProject, defaultPreferences.quickAddProject),
     quickAddDate: bool(input.quickAddDate, defaultPreferences.quickAddDate),
+    homeView: oneOf(input.homeView, ['inbox', 'today', 'upcoming'] as const, defaultPreferences.homeView),
+    syncHomeView: bool(input.syncHomeView, defaultPreferences.syncHomeView),
+    detectDates: bool(input.detectDates, defaultPreferences.detectDates),
+    resetSubtasks: bool(input.resetSubtasks, defaultPreferences.resetSubtasks),
+    autoAcceptInvites: bool(input.autoAcceptInvites, defaultPreferences.autoAcceptInvites),
+    timeZone: typeof input.timeZone === 'string' ? input.timeZone : defaultPreferences.timeZone,
+    nextWeekday: weekdayNumber(input.nextWeekday, defaultPreferences.nextWeekday),
+    weekendDay: input.weekendDay === 0 || input.weekendDay === 5 || input.weekendDay === 6 ? input.weekendDay : defaultPreferences.weekendDay,
+    webLinks: input.webLinks === 'browser' ? 'browser' : 'app',
+    completeTone: oneOf(input.completeTone, ['none', 'chime', 'bell'] as const, defaultPreferences.completeTone),
+    rightSwipe: oneOf(input.rightSwipe, ['select', 'schedule', 'complete', 'none'] as const, defaultPreferences.rightSwipe),
+    leftSwipe: oneOf(input.leftSwipe, ['select', 'schedule', 'complete', 'none'] as const, defaultPreferences.leftSwipe),
   };
 }
 
@@ -238,6 +279,10 @@ function oneOf<T extends string>(value: unknown, options: readonly T[], fallback
 
 function oneOfMinutes(value: unknown) {
   return value === 5 || value === 15 || value === 30 || value === 60 ? value : 15;
+}
+
+function weekdayNumber(value: unknown, fallback: number) {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 6 ? value : fallback;
 }
 
 function bool(value: unknown, fallback: boolean) {

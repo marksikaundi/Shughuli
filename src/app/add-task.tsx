@@ -20,7 +20,7 @@ import { Screen } from '@/components/screen';
 import { TaskEditor } from '@/components/task-editor';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { useProjects } from '@/data/projects';
-import { formatClock, formatDate, toDateKey, useTasks, type Priority, type Task } from '@/data/tasks';
+import { formatClock, formatDate, todayKey, useTasks, type Priority, type Task } from '@/data/tasks';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
@@ -72,7 +72,7 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
   const [tagDraft, setTagDraft] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [date, setDate] = useState(task?.date ?? toDateKey(new Date()));
+  const [date, setDate] = useState(task?.date ?? todayKey());
   const [start, setStart] = useState(task?.start ?? planningStart);
   const [scheduleOpen, setScheduleOpen] = useState<'date' | 'time' | null>(null);
 

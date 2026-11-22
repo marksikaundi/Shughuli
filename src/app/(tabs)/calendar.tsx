@@ -8,7 +8,7 @@ import { Screen, useNightStatus } from '@/components/screen';
 import { TaskLine } from '@/components/task-line';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
-import { startOfWeek, toDateKey, useTasks, type Task } from '@/data/tasks';
+import { startOfWeek, toDateKey, todayKey, useTasks, type Task } from '@/data/tasks';
 import { formatLocale, formatMonthYear } from '@/i18n/format';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
@@ -22,7 +22,7 @@ export default function UpcomingScreen() {
   const visibility = usePreferencesStore((state) => state.prefs.completedVisibility);
   const [selected, setSelected] = useState(() => new Date());
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const today = toDateKey(new Date());
+  const today = todayKey();
   const tomorrow = shiftKey(today, 1);
 
   const weekStart = useMemo(() => startOfWeek(selected, weekStartsOn), [selected, weekStartsOn]);

@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewIn
 
 import { Icon } from '@/components/icon';
 import { Palette, cardShadow } from '@/constants/palette';
-import { startOfWeek, toDateKey } from '@/data/model';
+import { startOfWeek, toDateKey, todayKey } from '@/data/model';
 import { formatAccessibleDate, formatMonthYear, formatWeekday } from '@/i18n/format';
 import type { TimeFormat, WeekStart } from '@/lib/runtime-prefs';
 import { useCopy } from '@/lib/settings-copy';
@@ -50,7 +50,7 @@ function CalendarBody({
   const text = useCopy();
   const selected = keyToDate(value);
   const [cursor, setCursor] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
-  const todayKey = toDateKey(new Date());
+  const currentDay = todayKey();
   const monthLabel = formatMonthYear(cursor);
   const weekdays = weekdayLabels(weekStartsOn);
   const days = monthDays(cursor, weekStartsOn);
@@ -82,7 +82,7 @@ function CalendarBody({
           const key = toDateKey(day);
           const inMonth = day.getMonth() === cursor.getMonth();
           const active = key === value;
-          const today = key === todayKey;
+          const today = key === currentDay;
           return (
             <Pressable
               key={key}
