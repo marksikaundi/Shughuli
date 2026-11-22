@@ -12,6 +12,9 @@ type Links = {
   calendarId: string;
   account: string;
   events: Record<string, string>;
+  googleAccount?: string;
+  outlookAccount?: string;
+  outlookCalendarId?: string;
 };
 
 export type GoogleScheduleItem = {
@@ -43,28 +46,41 @@ export async function calendarAccessGranted() {
 }
 
 export async function connectGoogleCalendar(consent = false) {
-  if (Platform.OS === 'web') {
-    throw new Error(getCopy().googlePhoneOnly);
-  }
-
-  const existing = await Calendar.getCalendarPermissionsAsync();
-  if (!existing.granted) {
-    if (!consent) {
-      throw new Error(getCopy().agreeCalendar);
-    }
-    const permission = await Calendar.requestCalendarPermissionsAsync();
-    if (!permission.granted) {
-      throw new Error(getCopy().allowCalendar);
-    }
-  }
-
-  const calendar = await ensureShughuliCalendar();
+  await ensureCalendarPermission(consent);
+  const calendar = await ensureProviderCalendar(isGoogle, getCopy().addGoogleAccount);
   const account = calendar.ownerAccount || calendar.source?.name || 'Google';
   const current = (await readLinks()) ?? { calendarId: calendar.id, account, events: {} };
   current.calendarId = calendar.id;
   current.account = account;
+  current.googleAccount = account;
   await writeLinks(current);
   return current;
+}
+
+export async function connectOutlookCalendar(consent = false) {
+  await ensureCalendarPermission(consent);
+  const calendar = await ensureProviderCalendar(isOutlook, getCopy().addOutlookAccount);
+  const account = calendar.ownerAccount || calendar.source?.name || 'Outlook';
+  const current = (await readLinks()) ?? { calendarId: calendar.id, account, events: {} };
+  current.outlookAccount = account;
+  current.outlookCalendarId = calendar.id;
+  if (!current.googleAccount) {
+    current.calendarId = calendar.id;
+    current.account = account;
+  }
+  await writeLinks(current);
+  return current;
+}
+
+async function ensureCalendarPermission(consent: boolean) {
+  if (Platform.OS === 'web') {
+    throw new Error(getCopy().googlePhoneOnly);
+  }
+  const existing = await Calendar.getCalendarPermissionsAsync();
+  if (existing.granted) return;
+  if (!consent) throw new Error(getCopy().agreeCalendar);
+  const permission = await Calendar.requestCalendarPermissionsAsync();
+  if (!permission.granted) throw new Error(getCopy().allowCalendar);
 }
 
 export async function pullGoogleEvents(save: (tasks: Task[]) => Promise<void>) {
@@ -73,7 +89,7 @@ export async function pullGoogleEvents(save: (tasks: Task[]) => Promise<void>) {
   const permission = await Calendar.getCalendarPermissionsAsync();
   if (!permission.granted) return;
 
-  const calendars = (await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT)).filter(isGoogle);
+  const calendars = await connectedCalendars(links);
   if (calendars.length === 0) return;
 
   const start = new Date();
@@ -140,7 +156,7 @@ export async function googleEventsOn(date: Date): Promise<GoogleScheduleItem[]> 
   const permission = await Calendar.getCalendarPermissionsAsync();
   if (!permission.granted) return [];
 
-  const calendars = (await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT)).filter(isGoogle);
+  const calendars = await connectedCalendars(links);
   if (calendars.length === 0) return [];
   const start = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
   const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
@@ -215,17 +231,15 @@ async function deleteEvent(eventId: string) {
   }
 }
 
-async function ensureShughuliCalendar() {
+async function ensureProviderCalendar(match: (calendar: Calendar.Calendar) => boolean, missing: string) {
   const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-  const google = calendars.filter((calendar) => isGoogle(calendar) && calendar.allowsModifications);
-  if (google.length === 0) {
-    throw new Error(getCopy().addGoogleAccount);
-  }
+  const hosts = calendars.filter((calendar) => match(calendar) && calendar.allowsModifications);
+  if (hosts.length === 0) throw new Error(missing);
 
-  const existing = google.find((calendar) => calendar.title === CALENDAR_TITLE);
+  const existing = hosts.find((calendar) => calendar.title === CALENDAR_TITLE);
   if (existing) return existing;
 
-  const host = google.find((calendar) => calendar.isPrimary) ?? google[0];
+  const host = hosts.find((calendar) => calendar.isPrimary) ?? hosts[0];
   try {
     const id = await Calendar.createCalendarAsync({
       title: CALENDAR_TITLE,
@@ -242,6 +256,20 @@ async function ensureShughuliCalendar() {
   } catch {
     return host;
   }
+}
+
+async function connectedCalendars(links: Links) {
+  const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+  const google = links.googleAccount || !links.outlookAccount ? calendars.filter(isGoogle) : [];
+  const outlook = links.outlookAccount ? calendars.filter(isOutlook) : [];
+  const chosen = [...google, ...outlook];
+  return chosen.length > 0 ? chosen : calendars.filter(isGoogle);
+}
+
+function isOutlook(calendar: Calendar.Calendar) {
+  const type = String(calendar.source?.type ?? '').toLowerCase();
+  const account = `${calendar.source?.name ?? ''} ${calendar.ownerAccount ?? ''} ${calendar.title ?? ''}`.toLowerCase();
+  return type.includes('exchange') || type.includes('outlook') || account.includes('outlook') || account.includes('@hotmail.') || account.includes('@live.') || account.includes('@office');
 }
 
 function isGoogle(calendar: Calendar.Calendar) {
@@ -315,7 +343,14 @@ async function readLinks(): Promise<Links | null> {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<Links>;
     if (!parsed.calendarId || !parsed.account) return null;
-    return { calendarId: parsed.calendarId, account: parsed.account, events: parsed.events ?? {} };
+    return {
+      calendarId: parsed.calendarId,
+      account: parsed.account,
+      events: parsed.events ?? {},
+      googleAccount: typeof parsed.googleAccount === 'string' ? parsed.googleAccount : undefined,
+      outlookAccount: typeof parsed.outlookAccount === 'string' ? parsed.outlookAccount : undefined,
+      outlookCalendarId: typeof parsed.outlookCalendarId === 'string' ? parsed.outlookCalendarId : undefined,
+    };
   } catch {
     return null;
   }

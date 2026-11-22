@@ -1,55 +1,22 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
-import {
-  calendarAccessGranted,
-  connectGoogleCalendar,
-  pullGoogleEvents,
-  readCalendarLink,
-  syncAllTasks,
-} from '@/lib/google-calendar';
-import { getCopy, useCopy } from '@/lib/settings-copy';
+import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
-import { useTaskStore } from '@/store/tasks';
 
 export function SettingsHome({ onClose }: { onClose?: () => void }) {
   const text = useCopy();
   const insets = useSafeAreaInsets();
   const themeChoice = usePreferencesStore((state) => state.prefs.theme);
   const appTint = usePreferencesStore((state) => state.prefs.appTint);
-  const [connecting, setConnecting] = useState(false);
   const themeLabel = themeChoice === 'dark' ? text.themeDark : themeChoice === 'system' ? text.themeSystem : text.themeLight;
   const tintLabel =
     appTint === 'lime' ? text.tintLime : appTint === 'blue' ? text.tintBlue : appTint === 'rose' ? text.tintRose : appTint === 'violet' ? text.tintViolet : text.tintCoral;
-
-  async function connectCalendar() {
-    if (connecting) return;
-    let granted = false;
-    try {
-      granted = await calendarAccessGranted();
-    } catch {
-      granted = false;
-    }
-    const consent = granted || (await confirmCalendarAccess());
-    if (!consent) return;
-    setConnecting(true);
-    try {
-      await connectGoogleCalendar(true);
-      await pullGoogleEvents((incoming) => useTaskStore.getState().importTasks(incoming));
-      await syncAllTasks(useTaskStore.getState().tasks);
-      await readCalendarLink();
-    } catch (error) {
-      Alert.alert(text.googleCalendar, error instanceof Error ? error.message : text.googleConnectFailed);
-    } finally {
-      setConnecting(false);
-    }
-  }
 
   return (
     <Screen tone="night">
@@ -74,7 +41,7 @@ export function SettingsHome({ onClose }: { onClose?: () => void }) {
 
         <View style={styles.card}>
           <SettingRow icon="settings" label={text.general} onPress={() => router.push('/settings/appearance')} />
-          <SettingRow icon="calendar" label={text.tabCalendar} onPress={() => void connectCalendar()} last />
+          <SettingRow icon="calendar" label={text.tabCalendar} onPress={() => router.push('/settings/calendar')} last />
         </View>
 
         <Text style={styles.section}>{text.personalization}</Text>
@@ -136,21 +103,6 @@ function SettingRow({
       {last ? null : <View style={styles.rowLine} />}
     </View>
   );
-}
-
-function confirmCalendarAccess() {
-  const text = getCopy();
-  return new Promise<boolean>((resolve) => {
-    Alert.alert(
-      text.googleCalendar,
-      text.googleConsent,
-      [
-        { text: text.notNow, style: 'cancel', onPress: () => resolve(false) },
-        { text: text.confirm, onPress: () => resolve(true) },
-      ],
-      { cancelable: true, onDismiss: () => resolve(false) },
-    );
-  });
 }
 
 const styles = StyleSheet.create({
