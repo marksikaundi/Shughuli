@@ -379,7 +379,6 @@ function actionNames(text: ReturnType<typeof useCopy>): Record<QuickAddAction, s
     reminders: text.reminders,
     labels: text.labels,
     deadline: text.deadline,
-    location: text.location,
   };
 }
 
@@ -396,8 +395,16 @@ function actionIcon(id: QuickAddAction): IconName {
   if (id === 'priority') return 'flag';
   if (id === 'reminders') return 'alarm';
   if (id === 'deadline') return 'deadline';
-  if (id === 'location') return 'pin';
-  return 'tag';
+  return 'tagLine';
+}
+
+function PlusMark() {
+  return (
+    <View style={styles.plusWrap}>
+      <View style={styles.plusBar} />
+      <View style={[styles.plusBar, styles.plusBarVert]} />
+    </View>
+  );
 }
 
 function ActionRow({
@@ -425,20 +432,20 @@ function ActionRow({
       <View style={styles.actionRow}>
         {locked ? (
           <View style={styles.lockBubble}>
-            <Icon name="lock" size={14} color={Night.text} />
+            <Icon name="lock" size={18} color="#F4F4F4" />
           </View>
         ) : (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={included ? name : name}
+            accessibilityLabel={name}
             onPress={onToggle}
-            style={[styles.bubble, { backgroundColor: included ? '#E15B52' : '#34C759' }]}>
-            <Text style={styles.bubbleGlyph}>{included ? '−' : '+'}</Text>
+            style={[styles.bubble, { backgroundColor: included ? '#E24B4A' : '#32C85A' }]}>
+            {included ? <View style={styles.minusBar} /> : <PlusMark />}
           </Pressable>
         )}
         <ActionMark id={id} />
         <Text style={styles.actionName}>{name}</Text>
-        {pro ? <Icon name="starFill" size={14} color="#F6A623" /> : null}
+        {pro ? <Icon name="starFill" size={13} color="#FF9F0A" /> : null}
         <View style={styles.actionSpacer} />
         <Pressable accessibilityRole="button" accessibilityLabel={text.moveAction} disabled={locked || !included} onPress={onMove} hitSlop={8} style={styles.grip}>
           <View style={styles.gripLine} />
@@ -703,36 +710,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#3A3A3A',
   },
   taskName: {
-    marginTop: 22,
+    marginTop: 18,
     marginLeft: 4,
-    color: Night.muted,
+    color: '#8E8E93',
     fontSize: 15,
-    fontWeight: 600,
+    fontWeight: 500,
   },
   previewChips: {
-    marginTop: 10,
+    marginTop: 8,
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'center',
     gap: 8,
   },
   previewPlus: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#3A3A3A',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#3A3A3C',
     alignItems: 'center',
     justifyContent: 'center',
   },
   previewGlyph: {
-    color: Night.text,
-    fontSize: 20,
-    fontWeight: 500,
-    marginTop: -1,
+    color: '#F2F2F2',
+    fontSize: 22,
+    fontWeight: 400,
+    marginTop: -2,
   },
   previewChip: {
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#3A3A3A',
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#3A3A3C',
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -744,8 +752,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   previewChipText: {
-    color: Night.text,
-    fontSize: 14,
+    color: '#F2F2F2',
+    fontSize: 15,
     fontWeight: 600,
   },
   hash: {
@@ -754,29 +762,29 @@ const styles = StyleSheet.create({
   },
   actionHeading: {
     marginTop: 26,
-    marginBottom: -4,
+    marginBottom: -2,
     marginLeft: 4,
-    color: Night.muted,
-    fontSize: 16,
-    fontWeight: 700,
+    color: '#8E8E93',
+    fontSize: 17,
+    fontWeight: 600,
   },
   actionCard: {
-    marginTop: 12,
-    borderRadius: 16,
-    backgroundColor: Night.row,
+    marginTop: 10,
+    borderRadius: 14,
+    backgroundColor: '#2C2C2E',
     overflow: 'hidden',
   },
   actionRow: {
-    minHeight: 54,
+    minHeight: 52,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   actionName: {
-    color: Night.text,
-    fontSize: 16,
-    fontWeight: 600,
+    color: '#F2F2F2',
+    fontSize: 17,
+    fontWeight: 500,
   },
   actionSpacer: {
     flex: 1,
@@ -787,23 +795,38 @@ const styles = StyleSheet.create({
     backgroundColor: '#3A3A3A',
   },
   bubble: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bubbleGlyph: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 700,
-    marginTop: -1,
+  minusBar: {
+    width: 10,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  plusWrap: {
+    width: 12,
+    height: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  plusBar: {
+    position: 'absolute',
+    width: 10,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  plusBarVert: {
+    width: 2,
+    height: 10,
   },
   lockBubble: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#3A3A3A',
+    width: 22,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -815,9 +838,9 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   gripLine: {
-    width: 14,
+    width: 16,
     height: 1.5,
     borderRadius: 1,
-    backgroundColor: '#8A8A8A',
+    backgroundColor: '#8E8E93',
   },
 });

@@ -39,6 +39,7 @@ const ICONS = {
   video: { ios: 'video.fill', android: 'video_call', web: 'video_call' },
   folder: { ios: 'folder.fill', android: 'folder', web: 'folder' },
   tag: { ios: 'tag.fill', android: 'sell', web: 'sell' },
+  tagLine: { ios: 'tag', android: 'sell', web: 'sell' },
   chevronDown: { ios: 'chevron.down', android: 'expand_more', web: 'expand_more' },
   moon: { ios: 'moon.fill', android: 'dark_mode', web: 'dark_mode' },
   chevron: { ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' },
@@ -66,7 +67,7 @@ const ICONS = {
   gift: { ios: 'gift', android: 'card_giftcard', web: 'card_giftcard' },
   paperclip: { ios: 'paperclip', android: 'attach_file', web: 'attach_file' },
   pin: { ios: 'mappin', android: 'place', web: 'place' },
-  deadline: { ios: 'arrow.clockwise', android: 'update', web: 'update' },
+  deadline: { ios: 'arrow.clockwise.circle', android: 'autorenew', web: 'autorenew' },
 } as const;
 
 export type IconName = keyof typeof ICONS;

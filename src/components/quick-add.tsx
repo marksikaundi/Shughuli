@@ -236,7 +236,6 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
                 attachment: text.attachment,
                 reminders: text.reminders,
                 deadline: text.deadline,
-                location: text.location,
               })}
               onPress={() => openAction(id)}
             />
@@ -291,8 +290,7 @@ function actionIcon(id: QuickAddAction): IconName {
   if (id === 'attachment') return 'paperclip';
   if (id === 'priority') return 'flag';
   if (id === 'reminders') return 'alarm';
-  if (id === 'location') return 'pin';
-  return 'tag';
+  return 'tagLine';
 }
 
 function ActionChip({ id, label, labeled, onPress }: { id: QuickAddAction; label: string; labeled: boolean; onPress: () => void }) {
