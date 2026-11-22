@@ -20,10 +20,15 @@ export function TaskLine({
   const text = useCopy();
   const done = task.status === 'done';
   const today = toDateKey(new Date());
-  const tomorrow = shiftKey(today, 1);
-  const dateLabel = task.date === today ? text.today : task.date === tomorrow ? text.tomorrow : formatLocale(keyToDate(task.date), { day: 'numeric', month: 'short' });
-  const dateColor = task.date === today ? '#3CBF73' : Night.muted;
-  const border = done ? Night.accent : task.priority === 'high' ? Night.accent : task.priority === 'medium' ? '#E7A23A' : Night.faint;
+  const soon = daysUntil(task.date);
+  const dateLabel =
+    task.date === today
+      ? text.today
+      : soon > 0 && soon < 7
+        ? formatLocale(keyToDate(task.date), { weekday: 'long' })
+        : formatLocale(keyToDate(task.date), { day: 'numeric', month: 'short' });
+  const dateColor = task.date === today ? '#3CBF73' : soon > 0 && soon < 7 ? '#C4B5FD' : Night.muted;
+  const border = Night.faint;
 
   return (
     <View style={styles.row}>
@@ -50,10 +55,12 @@ export function TaskLine({
   );
 }
 
-function shiftKey(key: string, days: number) {
-  const next = keyToDate(key);
-  next.setDate(next.getDate() + days);
-  return toDateKey(next);
+function daysUntil(key: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const date = keyToDate(key);
+  date.setHours(0, 0, 0, 0);
+  return Math.round((date.getTime() - today.getTime()) / 86400000);
 }
 
 function keyToDate(key: string) {

@@ -20,6 +20,7 @@ const ICONS = {
   inbox: { ios: 'tray', android: 'inbox', web: 'inbox' },
   month: { ios: 'square.grid.3x3', android: 'calendar_view_month', web: 'calendar_view_month' },
   menu: { ios: 'line.3.horizontal', android: 'menu', web: 'menu' },
+  viewList: { ios: 'list.bullet.rectangle', android: 'view_agenda', web: 'view_agenda' },
   search: { ios: 'magnifyingglass', android: 'search', web: 'search' },
   help: { ios: 'questionmark.circle', android: 'help', web: 'help' },
   flag: { ios: 'flag', android: 'flag', web: 'flag' },
