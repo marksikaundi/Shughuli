@@ -5,7 +5,7 @@ import { SettingsPage } from '@/components/settings/page';
 import { useSettingsTheme } from '@/hooks/use-settings-theme';
 import { useCopy } from '@/lib/settings-copy';
 
-const ITEMS = ['appIcon', 'navigation', 'quickAdd', 'siri', 'whatsNew'] as const;
+const ITEMS = ['appIcon', 'navigation', 'quickAdd', 'whatsNew'] as const;
 
 type ItemId = (typeof ITEMS)[number];
 
@@ -18,7 +18,6 @@ export default function SettingsItemScreen() {
     appIcon: text.appIconBody,
     navigation: text.navigationBody,
     quickAdd: text.quickAddBody,
-    siri: text.siriBody,
     whatsNew: text.whatsNewBody,
   };
 

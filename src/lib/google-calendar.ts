@@ -12,7 +12,6 @@ type Links = {
   calendarId: string;
   account: string;
   events: Record<string, string>;
-  syncedAt?: string;
 };
 
 export type GoogleScheduleItem = {
@@ -35,14 +34,6 @@ function enqueue<T>(job: () => Promise<T>) {
 
 export function readCalendarLink() {
   return readLinks();
-}
-
-export async function stampCalendarSync() {
-  const current = await readLinks();
-  if (!current) return null;
-  current.syncedAt = new Date().toISOString();
-  await writeLinks(current);
-  return current.syncedAt;
 }
 
 export async function calendarAccessGranted() {
@@ -324,12 +315,7 @@ async function readLinks(): Promise<Links | null> {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<Links>;
     if (!parsed.calendarId || !parsed.account) return null;
-    return {
-      calendarId: parsed.calendarId,
-      account: parsed.account,
-      events: parsed.events ?? {},
-      syncedAt: typeof parsed.syncedAt === 'string' ? parsed.syncedAt : undefined,
-    };
+    return { calendarId: parsed.calendarId, account: parsed.account, events: parsed.events ?? {} };
   } catch {
     return null;
   }
