@@ -1,5 +1,3 @@
-import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
-
 const sources = {
   chime: require('../../assets/sounds/shughuli_chime.wav'),
   bell: require('../../assets/sounds/shughuli_bell.wav'),
@@ -10,6 +8,7 @@ let ready = false;
 export async function playCompleteTone(tone: 'none' | 'chime' | 'bell') {
   if (tone === 'none') return;
   try {
+    const { createAudioPlayer, setAudioModeAsync } = await import('expo-audio');
     if (!ready) {
       await setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'mixWithOthers' });
       ready = true;
@@ -18,6 +17,6 @@ export async function playCompleteTone(tone: 'none' | 'chime' | 'bell') {
     player.play();
     setTimeout(() => player.release(), 4000);
   } catch {
-    // A missing tone should not block completing a task.
+    // This dev build does not include Expo Audio yet. Completing a task still works.
   }
 }
