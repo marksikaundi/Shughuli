@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/icon';
-import { NightCard, NightFoot, NightPage, NightSwitch } from '@/components/settings/night-page';
+import { NightCard, NightFoot, NightPage } from '@/components/settings/night-page';
 import { useSave } from '@/components/settings/page';
 import { Night } from '@/constants/night';
-import { APP_TINTS, appTintById, COLOR_THEMES, colorThemeById, QUICK_ADD_ACTIONS, QUICK_ADD_PRO, type AppTintId, type ColorThemeId, type QuickAddAction, type ThemeChoice } from '@/data/preferences';
+import { APP_TINTS, appTintById, COLOR_THEMES, colorThemeById, QUICK_ADD_ACTIONS, QUICK_ADD_PRO, type AppTintId, type ColorThemeId, type QuickAddAction, type TabId, type ThemeChoice } from '@/data/preferences';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
@@ -245,22 +245,130 @@ function AppIconPanel() {
   );
 }
 
+const NAV_TABS: { id: TabId; icon: IconName; locked: boolean }[] = [
+  { id: 'inbox', icon: 'inbox', locked: false },
+  { id: 'today', icon: 'calendar', locked: false },
+  { id: 'upcoming', icon: 'month', locked: false },
+  { id: 'browse', icon: 'list', locked: true },
+];
+
 function NavigationPanel() {
   const text = useCopy();
   const prefs = usePreferencesStore((state) => state.prefs);
   const save = useSave();
+  const [editing, setEditing] = useState(false);
+  const names: Record<TabId, string> = {
+    inbox: text.inbox,
+    today: text.today,
+    upcoming: text.upcoming,
+    browse: text.browse,
+  };
+  const visible = prefs.tabOrder.filter((id) => tabShown(id, prefs));
+  const menu = NAV_TABS.filter((item) => !item.locked);
+
+  function shownPatch(id: TabId, value: boolean) {
+    if (id === 'inbox') return { showInboxTab: value };
+    if (id === 'today') return { showTodayTab: value };
+    if (id === 'upcoming') return { showUpcomingTab: value };
+    return {};
+  }
+
+  function move(id: TabId) {
+    const list = [...prefs.tabOrder];
+    const index = list.indexOf(id);
+    if (index < 0) return;
+    const next = index === list.length - 1 ? 0 : index + 1;
+    const [item] = list.splice(index, 1);
+    list.splice(next, 0, item);
+    void save({ tabOrder: list });
+  }
+
+  function addTab() {
+    const hidden = prefs.tabOrder.find((id) => id !== 'browse' && !tabShown(id, prefs));
+    if (hidden) void save(shownPatch(hidden, true));
+  }
 
   return (
-    <NightPage title={text.navigation}>
-      <NightCard>
-        <NightSwitch label={text.showTabLabels} value={prefs.showTabLabels} onChange={(showTabLabels) => void save({ showTabLabels })} />
-        <NightSwitch label={text.inbox} value={prefs.showInboxTab} onChange={(showInboxTab) => void save({ showInboxTab })} />
-        <NightSwitch label={text.today} value={prefs.showTodayTab} onChange={(showTodayTab) => void save({ showTodayTab })} />
-        <NightSwitch label={text.upcoming} value={prefs.showUpcomingTab} onChange={(showUpcomingTab) => void save({ showUpcomingTab })} last />
-      </NightCard>
-      <NightFoot>{text.navigationKeep}</NightFoot>
+    <NightPage
+      title={text.navigation}
+      trailing={
+        editing ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={text.done} onPress={() => setEditing(false)} style={styles.navDone}>
+            <Icon name="check" size={18} color="#FFFFFF" />
+          </Pressable>
+        ) : (
+          <Pressable accessibilityRole="button" accessibilityLabel={text.edit} onPress={() => setEditing(true)} style={styles.navEdit}>
+            <Text style={styles.navEditText}>{text.edit}</Text>
+          </Pressable>
+        )
+      }>
+      <Text style={styles.navHeading}>{text.tabBarSection}</Text>
+      <View style={styles.actionCard}>
+        {visible.map((id, index) => {
+          const item = NAV_TABS.find((tab) => tab.id === id)!;
+          const last = index === visible.length - 1 && editing;
+          return (
+            <View key={id}>
+              <View style={styles.navRow}>
+                {editing && !item.locked ? (
+                  <Pressable accessibilityRole="button" accessibilityLabel={names[id]} onPress={() => void save(shownPatch(id, false))} style={[styles.bubble, { backgroundColor: '#E24B4A' }]}>
+                    <View style={styles.minusBar} />
+                  </Pressable>
+                ) : null}
+                <Icon name={item.icon} size={20} color={Night.accent} />
+                <Text style={styles.navName}>{names[id]}</Text>
+                {!editing && !item.locked ? <Icon name="chevron" size={16} color="#6E6E6E" /> : null}
+                <Pressable accessibilityRole="button" accessibilityLabel={text.moveAction} onPress={() => move(id)} hitSlop={8} style={styles.grip}>
+                  <View style={styles.gripLine} />
+                  <View style={styles.gripLine} />
+                  <View style={styles.gripLine} />
+                </Pressable>
+              </View>
+              {last ? null : <View style={styles.navLine} />}
+            </View>
+          );
+        })}
+        {editing ? null : (
+          <Pressable accessibilityRole="button" accessibilityLabel={text.addTab} onPress={addTab} style={styles.navRow}>
+            <Text style={styles.navPlus}>+</Text>
+            <Text style={styles.navAdd}>{text.addTab}</Text>
+            <View style={styles.actionSpacer} />
+            <Icon name="chevron" size={16} color="#6E6E6E" />
+          </Pressable>
+        )}
+      </View>
+      <Text style={styles.navFoot}>{text.navigationFoot}</Text>
+
+      <View style={styles.navMenuHead}>
+        <Text style={styles.navHeading}>{text.menuItems}</Text>
+        <Pressable accessibilityRole="button" onPress={() => void save({ showInboxTab: false, showTodayTab: false, showUpcomingTab: false })}>
+          <Text style={styles.navHide}>{text.hideAll}</Text>
+        </Pressable>
+      </View>
+      <View style={styles.actionCard}>
+        {menu.map((item, index) => {
+          const on = tabShown(item.id, prefs);
+          return (
+            <View key={item.id}>
+              <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: on }} onPress={() => void save(shownPatch(item.id, !on))} style={styles.navRow}>
+                <View style={[styles.menuCheck, on && styles.menuCheckOn]}>{on ? <Icon name="check" size={12} color="#FFFFFF" /> : null}</View>
+                <Icon name={item.icon} size={20} color={Night.accent} />
+                <Text style={styles.navName}>{names[item.id]}</Text>
+              </Pressable>
+              {index === menu.length - 1 ? null : <View style={styles.navLine} />}
+            </View>
+          );
+        })}
+      </View>
     </NightPage>
   );
+}
+
+function tabShown(id: TabId, prefs: { showInboxTab: boolean; showTodayTab: boolean; showUpcomingTab: boolean }) {
+  if (id === 'inbox') return prefs.showInboxTab;
+  if (id === 'today') return prefs.showTodayTab;
+  if (id === 'upcoming') return prefs.showUpcomingTab;
+  return true;
 }
 
 function QuickAddPanel() {
@@ -865,5 +973,96 @@ const styles = StyleSheet.create({
     height: 1.5,
     borderRadius: 1,
     backgroundColor: '#8E8E93',
+  },
+  navEdit: {
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: '#3A3A3A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navEditText: {
+    color: '#F2F2F2',
+    fontSize: 16,
+    fontWeight: 600,
+  },
+  navDone: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Night.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navHeading: {
+    marginTop: 22,
+    marginLeft: 4,
+    color: '#8E8E93',
+    fontSize: 17,
+    fontWeight: 600,
+  },
+  navRow: {
+    minHeight: 52,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  navName: {
+    flex: 1,
+    color: '#F2F2F2',
+    fontSize: 17,
+    fontWeight: 500,
+  },
+  navLine: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 46,
+    backgroundColor: '#3A3A3C',
+  },
+  navPlus: {
+    width: 22,
+    color: Night.accent,
+    fontSize: 22,
+    fontWeight: 500,
+    textAlign: 'center',
+  },
+  navAdd: {
+    flex: 1,
+    color: Night.accent,
+    fontSize: 17,
+    fontWeight: 600,
+  },
+  navFoot: {
+    marginTop: 10,
+    marginHorizontal: 4,
+    color: '#8E8E93',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: 500,
+  },
+  navMenuHead: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  navHide: {
+    marginTop: 22,
+    color: Night.accent,
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  menuCheck: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: Night.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuCheckOn: {
+    backgroundColor: Night.accent,
   },
 });

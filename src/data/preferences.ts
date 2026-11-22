@@ -39,6 +39,8 @@ export type ColorThemeId = (typeof COLOR_THEMES)[number]['id'];
 export const QUICK_ADD_ACTIONS = ['project', 'date', 'assignee', 'attachment', 'priority', 'reminders', 'labels', 'deadline'] as const;
 export const QUICK_ADD_PRO: readonly QuickAddAction[] = ['deadline'];
 export type QuickAddAction = (typeof QUICK_ADD_ACTIONS)[number];
+export const TAB_IDS = ['inbox', 'today', 'upcoming', 'browse'] as const;
+export type TabId = (typeof TAB_IDS)[number];
 export type ThemeChoice = 'light' | 'dark' | 'system';
 export type FontSize = 'small' | 'default' | 'large';
 export type CompletedVisibility = 'show' | 'dim' | 'hide';
@@ -99,6 +101,7 @@ export type Preferences = {
   showInboxTab: boolean;
   showTodayTab: boolean;
   showUpcomingTab: boolean;
+  tabOrder: TabId[];
   quickAddPriority: boolean;
   quickAddProject: boolean;
   quickAddDate: boolean;
@@ -173,6 +176,7 @@ export const defaultPreferences: Preferences = {
   showInboxTab: true,
   showTodayTab: true,
   showUpcomingTab: true,
+  tabOrder: ['inbox', 'today', 'upcoming', 'browse'],
   quickAddPriority: false,
   quickAddProject: true,
   quickAddDate: true,
@@ -285,6 +289,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     showInboxTab: bool(input.showInboxTab, defaultPreferences.showInboxTab),
     showTodayTab: bool(input.showTodayTab, defaultPreferences.showTodayTab),
     showUpcomingTab: bool(input.showUpcomingTab, defaultPreferences.showUpcomingTab),
+    tabOrder: tabOrderList(input.tabOrder),
     ...quickAddFields(input),
     homeView: oneOf(input.homeView, ['inbox', 'today', 'upcoming'] as const, defaultPreferences.homeView),
     syncHomeView: bool(input.syncHomeView, defaultPreferences.syncHomeView),
@@ -336,6 +341,15 @@ function quickAddFields(input: Partial<Preferences>) {
 function uniqueActions(items: QuickAddAction[]) {
   const next: QuickAddAction[] = [];
   for (const item of items) if (!next.includes(item)) next.push(item);
+  return next;
+}
+
+function tabOrderList(value: unknown): TabId[] {
+  const known = new Set<string>(TAB_IDS);
+  const saved = Array.isArray(value) ? value.filter((item): item is TabId => typeof item === 'string' && known.has(item)) : [];
+  const next: TabId[] = [];
+  for (const item of saved) if (!next.includes(item)) next.push(item);
+  for (const item of TAB_IDS) if (!next.includes(item)) next.push(item);
   return next;
 }
 

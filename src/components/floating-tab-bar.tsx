@@ -7,7 +7,7 @@ import { Icon, type IconName } from '@/components/icon';
 import { QuickAdd } from '@/components/quick-add';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
-import { appTintById } from '@/data/preferences';
+import { appTintById, type TabId } from '@/data/preferences';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
@@ -25,9 +25,12 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
   const showInbox = usePreferencesStore((state) => state.prefs.showInboxTab);
   const showToday = usePreferencesStore((state) => state.prefs.showTodayTab);
   const showUpcoming = usePreferencesStore((state) => state.prefs.showUpcomingTab);
+  const tabOrder = usePreferencesStore((state) => state.prefs.tabOrder);
   const tint = appTintById(usePreferencesStore((state) => state.prefs.appTint)).color;
   const focusedKey = state.routes[state.index]?.key;
-  const visible = state.routes.filter((route) => !hiddenTab(route.name, showInbox, showToday, showUpcoming));
+  const visible = state.routes
+    .filter((route) => !hiddenTab(route.name, showInbox, showToday, showUpcoming))
+    .sort((a, b) => tabRank(a.name, tabOrder) - tabRank(b.name, tabOrder));
   const splitAt = visible.findIndex((route) => route.name === (visible.some((route) => route.name === 'calendar') ? 'calendar' : 'browse'));
   const left = splitAt === -1 ? visible : visible.slice(0, splitAt);
   const right = splitAt === -1 ? [] : visible.slice(splitAt);
@@ -197,6 +200,13 @@ const styles = StyleSheet.create({
     opacity: 0.86,
   },
 });
+
+function tabRank(name: string, order: TabId[]) {
+  const id: TabId | null = name === 'index' ? 'inbox' : name === 'projects' ? 'today' : name === 'calendar' ? 'upcoming' : name === 'browse' ? 'browse' : null;
+  if (!id) return order.length;
+  const index = order.indexOf(id);
+  return index === -1 ? order.length : index;
+}
 
 function hiddenTab(name: string, inbox: boolean, today: boolean, upcoming: boolean) {
   if (name === 'index') return !inbox;
