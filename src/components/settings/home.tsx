@@ -5,8 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/icon';
 import { Screen } from '@/components/screen';
-import { TextPrompt } from '@/components/settings/controls';
-import { useSave } from '@/components/settings/page';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
 import {
@@ -17,16 +15,12 @@ import {
   syncAllTasks,
 } from '@/lib/google-calendar';
 import { getCopy, useCopy } from '@/lib/settings-copy';
-import { usePreferencesStore } from '@/store/preferences';
 import { useTaskStore } from '@/store/tasks';
 
 export function SettingsHome({ onClose }: { onClose?: () => void }) {
   const text = useCopy();
   const insets = useSafeAreaInsets();
-  const save = useSave();
-  const displayName = usePreferencesStore((state) => state.prefs.displayName);
   const [connecting, setConnecting] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
 
   async function connectCalendar() {
     if (connecting) return;
@@ -73,9 +67,7 @@ export function SettingsHome({ onClose }: { onClose?: () => void }) {
         </View>
 
         <View style={styles.card}>
-          <SettingRow icon="personCircle" label={text.account} onPress={() => setAccountOpen(true)} />
           <SettingRow icon="settings" label={text.general} onPress={() => router.push('/settings/appearance')} />
-          <SettingRow icon="wallet" label={text.subscription} onPress={() => openItem('subscription')} />
           <SettingRow icon="calendar" label={text.tabCalendar} onPress={() => void connectCalendar()} last />
         </View>
 
@@ -87,23 +79,11 @@ export function SettingsHome({ onClose }: { onClose?: () => void }) {
           <SettingRow icon="plusBox" label={text.quickAdd} onPress={() => openItem('quickAdd')} last />
         </View>
       </ScrollView>
-
-      <TextPrompt
-        visible={accountOpen}
-        title={text.account}
-        initial={displayName}
-        placeholder={text.namePlaceholder}
-        onClose={() => setAccountOpen(false)}
-        onSave={(name) => {
-          void save({ displayName: name });
-          setAccountOpen(false);
-        }}
-      />
     </Screen>
   );
 }
 
-function openItem(id: 'subscription' | 'appIcon' | 'navigation' | 'quickAdd') {
+function openItem(id: 'appIcon' | 'navigation' | 'quickAdd') {
   router.push({ pathname: '/settings/item', params: { id } });
 }
 

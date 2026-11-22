@@ -5,7 +5,7 @@ import { SettingsPage } from '@/components/settings/page';
 import { useSettingsTheme } from '@/hooks/use-settings-theme';
 import { useCopy } from '@/lib/settings-copy';
 
-const ITEMS = ['subscription', 'appIcon', 'navigation', 'quickAdd'] as const;
+const ITEMS = ['appIcon', 'navigation', 'quickAdd'] as const;
 
 type ItemId = (typeof ITEMS)[number];
 
@@ -13,9 +13,8 @@ export default function SettingsItemScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const text = useCopy();
   const theme = useSettingsTheme();
-  const id: ItemId = ITEMS.find((item) => item === params.id) ?? 'subscription';
+  const id: ItemId = ITEMS.find((item) => item === params.id) ?? 'appIcon';
   const bodies: Record<ItemId, string> = {
-    subscription: text.subscriptionBody,
     appIcon: text.appIconBody,
     navigation: text.navigationBody,
     quickAdd: text.quickAddBody,
