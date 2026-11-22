@@ -26,7 +26,7 @@ import { usePreferencesStore } from '@/store/preferences';
 
 const PRIORITIES: Priority[] = ['low', 'medium', 'high'];
 
-export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottomInset: number }) {
+export function QuickAdd({ onClose, bottomInset, initialDate = '' }: { onClose: () => void; bottomInset: number; initialDate?: string }) {
   const text = useCopy();
   const { tasks, addTask } = useTasks();
   const { projects } = useProjects();
@@ -45,8 +45,9 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [project, setProject] = useState('');
   const [priority, setPriority] = useState<Priority>(priorityDefault);
-  const [date, setDate] = useState(() => todayKey());
-  const [dateChosen, setDateChosen] = useState(false);
+  const presetDate = /^\d{4}-\d{2}-\d{2}$/.test(initialDate) ? initialDate : '';
+  const [date, setDate] = useState(() => presetDate || todayKey());
+  const [dateChosen, setDateChosen] = useState(Boolean(presetDate));
   const [time, setTime] = useState<string | null>(null);
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
@@ -504,7 +505,8 @@ function dateChipLabel(
   dueLabel: string,
 ) {
   if (!chosen && !time) return dueLabel;
-  const base = date === today ? todayLabel : date === tomorrow ? tomorrowLabel : formatLocale(keyToDate(date), { day: 'numeric', month: 'short' });
+  const base =
+    date === today ? todayLabel : date === tomorrow ? tomorrowLabel : formatLocale(keyToDate(date), { weekday: 'short', day: 'numeric', month: 'short' });
   return time ? `${base} ${formatClock(time, timeFormat)}` : base;
 }
 

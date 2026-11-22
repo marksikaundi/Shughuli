@@ -13,6 +13,7 @@ import type { PersonId } from '@/data/people';
 import { startOfWeek, toDateKey, todayKey, useTasks, type Task } from '@/data/tasks';
 import { formatLocale } from '@/i18n/format';
 import { fill, useCopy } from '@/lib/settings-copy';
+import { useComposerStore } from '@/store/composer';
 import { usePreferencesStore } from '@/store/preferences';
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
@@ -30,6 +31,7 @@ export default function UpcomingScreen() {
   const insets = useSafeAreaInsets();
   const { tasks, setTaskStatus } = useTasks();
   const weekStartsOn = usePreferencesStore((state) => state.prefs.weekStartsOn);
+  const openForDate = useComposerStore((state) => state.openForDate);
   const [display, setDisplay] = useState<TodayDisplay>(defaultTodayDisplay);
   const [displayOpen, setDisplayOpen] = useState(false);
   const [selected, setSelected] = useState(() => keyToDate(todayKey()));
@@ -152,7 +154,10 @@ export default function UpcomingScreen() {
               selected={selected}
               week={week}
               marked={byDay}
-              onSelect={setSelected}
+              onSelect={(date) => {
+                setSelected(date);
+                openForDate(toDateKey(date));
+              }}
             />
           ) : (
             <>
@@ -161,7 +166,14 @@ export default function UpcomingScreen() {
                   const key = toDateKey(date);
                   const active = key === selectedKey;
                   return (
-                    <Pressable key={key} accessibilityRole="button" onPress={() => setSelected(date)} style={styles.day}>
+                    <Pressable
+                      key={key}
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setSelected(date);
+                        openForDate(key);
+                      }}
+                      style={styles.day}>
                       <Text style={styles.dayName}>{formatLocale(date, { weekday: 'narrow' }).slice(0, 1).toUpperCase()}</Text>
                       <View style={[styles.dayNumber, active && styles.dayNumberActive]}>
                         <Text style={[styles.dayNumberText, active && styles.dayNumberTextActive]}>{date.getDate()}</Text>
@@ -203,12 +215,14 @@ export default function UpcomingScreen() {
               return (
                 <View key={key} style={styles.block}>
                   <View style={styles.dayHead}>
-                    <Text style={[styles.dayLabel, quiet && styles.dayLabelQuiet]}>{label}</Text>
+                    <Pressable accessibilityRole="button" onPress={() => openForDate(key)} style={styles.dayLabelButton}>
+                      <Text style={[styles.dayLabel, quiet && styles.dayLabelQuiet]}>{label}</Text>
+                    </Pressable>
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={text.addTask}
                       hitSlop={8}
-                      onPress={() => router.push({ pathname: '/add-task', params: { date: key } })}
+                      onPress={() => openForDate(key)}
                       style={styles.add}>
                       <Icon name="plus" size={20} color={quiet ? '#9A9A9A' : Night.text} />
                     </Pressable>
@@ -548,8 +562,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  dayLabel: {
+  dayLabelButton: {
     flex: 1,
+  },
+  dayLabel: {
     color: Night.text,
     fontSize: 17,
     fontWeight: 700,

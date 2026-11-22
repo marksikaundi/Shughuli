@@ -9,6 +9,7 @@ import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
 import { appTintById, type TabId } from '@/data/preferences';
 import { useCopy } from '@/lib/settings-copy';
+import { useComposerStore } from '@/store/composer';
 import { usePreferencesStore } from '@/store/preferences';
 
 const ICONS: Record<string, IconName> = {
@@ -32,6 +33,8 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
     .filter((route) => !hiddenTab(route.name, showInbox, showToday, showUpcoming))
     .sort((a, b) => tabRank(a.name, tabOrder) - tabRank(b.name, tabOrder));
   const showAdd = !pathname.startsWith('/settings');
+  const composeRequest = useComposerStore((state) => state.request);
+  const clearComposer = useComposerStore((state) => state.clear);
   const [composing, setComposing] = useState(false);
   const [keyboard, setKeyboard] = useState(0);
   const start = placeFab(0, Dimensions.get('window').height - 160, true);
@@ -59,11 +62,18 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
         const next = placeFab(origin.current.x + gesture.dx, origin.current.y + gesture.dy, true);
         pos.current = next;
         setSpot(next);
-        if (!moved.current) setComposing(true);
+        if (!moved.current) {
+          clearComposer();
+          setComposing(true);
+        }
       },
     }),
   ).current;
   if (!showAdd && composing) setComposing(false);
+
+  useEffect(() => {
+    if (composeRequest) setComposing(true);
+  }, [composeRequest]);
 
   useEffect(() => {
     const focused = state.routes[state.index];
@@ -136,7 +146,15 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
         <>
           <Pressable style={styles.backdrop} onPress={() => setComposing(false)} />
           <View style={[styles.composer, { bottom: keyboard }]}>
-            <QuickAdd onClose={() => setComposing(false)} bottomInset={keyboard > 0 ? 8 : Math.max(insets.bottom, 8)} />
+            <QuickAdd
+              key={composeRequest?.nonce ?? 'fab'}
+              initialDate={composeRequest?.date ?? ''}
+              onClose={() => {
+                setComposing(false);
+                clearComposer();
+              }}
+              bottomInset={keyboard > 0 ? 8 : Math.max(insets.bottom, 8)}
+            />
           </View>
         </>
       ) : (
