@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/icon';
@@ -10,8 +10,6 @@ import { settingsStyles, useSave } from '@/components/settings/page';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
 import { ACCENTS, accentById } from '@/data/preferences';
-import { useProjects } from '@/data/projects';
-import { useTasks } from '@/data/tasks';
 import {
   calendarAccessGranted,
   connectGoogleCalendar,
@@ -24,35 +22,16 @@ import { getCopy, useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 import { useTaskStore } from '@/store/tasks';
 
-const DOTS = ['#E15B52', '#5B8DEF', '#C8F06E', '#E7A23A', '#A78BDB'];
-
 export function SettingsHome({ onClose }: { onClose?: () => void }) {
   const text = useCopy();
   const insets = useSafeAreaInsets();
   const prefs = usePreferencesStore((state) => state.prefs);
   const save = useSave();
-  const { tasks } = useTasks();
-  const { projects } = useProjects();
-  const [query, setQuery] = useState('');
-  const [projectsOpen, setProjectsOpen] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const themeLabel = prefs.theme === 'dark' ? text.themeDark : prefs.theme === 'system' ? text.themeSystem : text.themeLight;
   const letter = (prefs.displayName.trim() || 'S').charAt(0).toUpperCase();
   const avatarColor = accentById(prefs.avatarColor).color;
-  const needle = query.trim().toLowerCase();
-
-  const matches = useMemo(() => {
-    if (!needle) return [];
-    return tasks
-      .filter((task) => task.title.toLowerCase().includes(needle) || task.project.toLowerCase().includes(needle))
-      .slice(0, 20);
-  }, [needle, tasks]);
-
-  const projectMatches = useMemo(() => {
-    if (!needle) return [];
-    return projects.filter((project) => project.name.toLowerCase().includes(needle));
-  }, [needle, projects]);
 
   async function connectCalendar() {
     if (connecting) return;
@@ -80,7 +59,6 @@ export function SettingsHome({ onClose }: { onClose?: () => void }) {
   return (
     <Screen tone="night">
       <ScrollView
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top + 8,
@@ -99,89 +77,31 @@ export function SettingsHome({ onClose }: { onClose?: () => void }) {
           )}
         </View>
 
-        <View style={styles.search}>
-          <Icon name="search" size={18} color={Night.accent} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={text.searchTasks}
-            placeholderTextColor={Night.muted}
-            style={styles.searchInput}
-            autoCorrect={false}
-            clearButtonMode="while-editing"
-          />
+        <View style={styles.card}>
+          <SettingRow icon="settings" label={text.general} onPress={() => router.push('/settings/appearance')} />
+          <SettingRow icon="calendar" label={text.tabCalendar} onPress={() => void connectCalendar()} last />
         </View>
 
-        {needle ? (
-          <View style={styles.results}>
-            {projectMatches.map((project) => (
-              <Pressable key={project.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/tasks', params: { project: project.name } })} style={styles.result}>
-                <Text style={styles.resultTitle}>{project.name}</Text>
-              </Pressable>
-            ))}
-            {matches.map((task) => (
-              <Pressable key={task.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/add-task', params: { id: task.id } })} style={styles.result}>
-                <Text style={styles.resultTitle}>{task.title}</Text>
-                {task.project.trim() ? <Text style={styles.resultMeta}>{task.project}</Text> : null}
-              </Pressable>
-            ))}
-            {projectMatches.length === 0 && matches.length === 0 ? <Text style={styles.emptySearch}>{text.noTasksYet}</Text> : null}
-          </View>
-        ) : (
-          <>
-            <View style={styles.card}>
-              <SettingRow icon="personCircle" label={text.avatar} onPress={() => setAvatarOpen(true)} />
-              <SettingRow icon="calendar" label={connecting ? text.googleCalendar : text.connectGoogle} onPress={() => void connectCalendar()} last />
-            </View>
+        <Text style={styles.section}>{text.personalization}</Text>
+        <View style={styles.card}>
+          <SettingRow icon="palette" label={text.theme} value={themeLabel} onPress={() => router.push('/settings/appearance')} />
+          <SettingRow icon="personCircle" label={text.avatar} onPress={() => setAvatarOpen(true)} last />
+        </View>
 
-            <Text style={styles.section}>{text.personal}</Text>
-            <View style={styles.card}>
-              <SettingRow icon="palette" label={text.appearance} value={themeLabel} onPress={() => router.push('/settings/appearance')} last />
-            </View>
+        <Text style={styles.section}>{text.productivity}</Text>
+        <View style={styles.card}>
+          <SettingRow icon="arrow" label={text.productivity} onPress={() => router.push('/settings/productivity')} />
+          <SettingRow icon="alarm" label={text.reminders} onPress={() => router.push('/settings/productivity')} />
+          <SettingRow icon="bell" label={text.notifications} onPress={() => router.push('/settings/productivity')} />
+          <SettingRow icon="timer" label={text.focus} onPress={() => router.push('/settings/focus')} last />
+        </View>
 
-            <Text style={styles.section}>{text.productivity}</Text>
-            <View style={styles.card}>
-              <SettingRow icon="done" label={text.productivity} onPress={() => router.push('/settings/productivity')} />
-              <SettingRow icon="alarm" label={text.reminders} onPress={() => router.push('/settings/productivity')} />
-              <SettingRow icon="bell" label={text.notifications} onPress={() => router.push('/settings/productivity')} />
-              <SettingRow icon="timer" label={text.focus} onPress={() => router.push('/settings/focus')} last />
-            </View>
-
-            <View style={[styles.card, styles.cardGap]}>
-              <SettingRow icon="shield" label={text.privacy} onPress={() => router.push('/settings/privacy')} />
-              <SettingRow icon="storage" label={text.data} onPress={() => router.push('/settings/data')} />
-              <SettingRow icon="help" label={text.helpResources} onPress={() => router.push('/about')} />
-              <SettingRow icon="info" label={text.about} onPress={() => router.push('/about')} last />
-            </View>
-
-            <View style={styles.sectionHead}>
-              <Text style={styles.section}>{text.myProjects}</Text>
-              <View style={styles.sectionActions}>
-                <Pressable accessibilityRole="button" accessibilityLabel={text.addProject} hitSlop={8} onPress={() => router.push('/add-project')}>
-                  <Icon name="plus" size={20} color={Night.muted} />
-                </Pressable>
-                <Pressable accessibilityRole="button" accessibilityState={{ expanded: projectsOpen }} hitSlop={8} onPress={() => setProjectsOpen((open) => !open)}>
-                  <View style={{ transform: [{ rotate: projectsOpen ? '0deg' : '180deg' }] }}>
-                    <Icon name="chevronDown" size={18} color={Night.muted} />
-                  </View>
-                </Pressable>
-              </View>
-            </View>
-            {projectsOpen && projects.length > 0 ? (
-              <View style={styles.card}>
-                {projects.map((project, index) => (
-                  <SettingRow
-                    key={project.id}
-                    dot={DOTS[index % DOTS.length]}
-                    label={project.name}
-                    last={index === projects.length - 1}
-                    onPress={() => router.push({ pathname: '/tasks', params: { project: project.name } })}
-                  />
-                ))}
-              </View>
-            ) : null}
-          </>
-        )}
+        <View style={styles.card}>
+          <SettingRow icon="shield" label={text.privacy} onPress={() => router.push('/settings/privacy')} />
+          <SettingRow icon="storage" label={text.data} onPress={() => router.push('/settings/data')} />
+          <SettingRow icon="help" label={text.helpFeedback} onPress={() => router.push('/about')} />
+          <SettingRow icon="info" label={text.about} onPress={() => router.push('/about')} last />
+        </View>
       </ScrollView>
 
       <Modal visible={avatarOpen} transparent animationType="fade" onRequestClose={() => setAvatarOpen(false)}>
@@ -234,14 +154,12 @@ export function SettingsHome({ onClose }: { onClose?: () => void }) {
 
 function SettingRow({
   icon,
-  dot,
   label,
   value,
   onPress,
   last = false,
 }: {
-  icon?: IconName;
-  dot?: string;
+  icon: IconName;
   label: string;
   value?: string;
   onPress: () => void;
@@ -250,11 +168,15 @@ function SettingRow({
   return (
     <View>
       <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-        {icon ? <Icon name={icon} size={22} color={Night.accent} /> : <View style={[styles.projectDot, { backgroundColor: dot }]} />}
+        <Icon name={icon} size={22} color={Night.accent} />
         <Text style={styles.rowLabel} numberOfLines={1}>
           {label}
         </Text>
-        {value ? <Text style={styles.rowValue}>{value}</Text> : null}
+        {value ? (
+          <Text style={styles.rowValue} numberOfLines={1}>
+            {value}
+          </Text>
+        ) : null}
         <Icon name="chevron" size={16} color={Night.faint} />
       </Pressable>
       {last ? null : <View style={styles.rowLine} />}
@@ -300,49 +222,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  search: {
-    marginTop: 14,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: Night.row,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
-  },
-  searchInput: {
-    flex: 1,
-    color: Night.text,
-    fontSize: 16,
-    fontWeight: 600,
-    paddingVertical: 0,
-  },
   card: {
     marginTop: 18,
     borderRadius: 16,
     backgroundColor: '#2A2A2A',
     overflow: 'hidden',
   },
-  cardGap: {
-    marginTop: 22,
-  },
   section: {
-    marginTop: 22,
-    marginBottom: -6,
+    marginTop: 26,
+    marginBottom: -8,
+    marginLeft: 4,
     color: Night.muted,
     fontSize: 16,
     fontWeight: 700,
-  },
-  sectionHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginTop: 22,
   },
   row: {
     minHeight: 54,
@@ -363,44 +255,13 @@ const styles = StyleSheet.create({
     fontWeight: 600,
   },
   rowValue: {
+    maxWidth: 120,
     color: Night.muted,
     fontSize: 15,
     fontWeight: 600,
-  },
-  projectDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
   },
   pressed: {
     opacity: 0.72,
-  },
-  results: {
-    marginTop: 16,
-    gap: 8,
-  },
-  result: {
-    minHeight: 52,
-    borderRadius: 12,
-    backgroundColor: Night.row,
-    paddingHorizontal: 14,
-    justifyContent: 'center',
-  },
-  resultTitle: {
-    color: Night.text,
-    fontSize: 16,
-    fontWeight: 600,
-  },
-  resultMeta: {
-    marginTop: 2,
-    color: Night.muted,
-    fontSize: 13,
-    fontWeight: 500,
-  },
-  emptySearch: {
-    color: Night.muted,
-    fontSize: 15,
-    fontWeight: 600,
   },
   overlay: {
     backgroundColor: 'rgba(0,0,0,0.55)',
