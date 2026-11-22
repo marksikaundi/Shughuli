@@ -16,10 +16,11 @@ export default function TabLayout() {
           backgroundColor: 'transparent',
         },
       }}>
-      <Tabs.Screen name="index" options={{ title: text.tabHome }} />
-      <Tabs.Screen name="projects" options={{ title: text.todo }} />
-      <Tabs.Screen name="calendar" options={{ title: text.tabCalendar }} />
-      <Tabs.Screen name="settings" options={{ title: text.tabSettings }} />
+      <Tabs.Screen name="index" options={{ title: text.inbox }} />
+      <Tabs.Screen name="projects" options={{ title: text.today }} />
+      <Tabs.Screen name="calendar" options={{ title: text.upcoming }} />
+      <Tabs.Screen name="browse" options={{ title: text.browse }} />
+      <Tabs.Screen name="settings" options={{ href: null, title: text.tabSettings }} />
     </Tabs>
   );
 }

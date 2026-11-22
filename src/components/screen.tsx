@@ -1,12 +1,25 @@
-import { StyleSheet, View, type ViewProps } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
+import { StatusBar, StyleSheet, View, type ViewProps } from 'react-native';
 
+import { Night } from '@/constants/night';
 import { Layout, Palette } from '@/constants/palette';
 
-export function Screen({ children, style, ...rest }: ViewProps) {
+export function useNightStatus() {
+  useFocusEffect(
+    useCallback(() => {
+      StatusBar.setBarStyle('light-content');
+      return () => StatusBar.setBarStyle('dark-content');
+    }, []),
+  );
+}
+
+export function Screen({ children, style, tone = 'day', ...rest }: ViewProps & { tone?: 'day' | 'night' }) {
+  const night = tone === 'night';
   return (
-    <View style={styles.root} {...rest}>
-      <View style={[styles.frame, style]}>
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.wash]} />
+    <View style={[styles.root, night && styles.rootNight]} {...rest}>
+      <View style={[styles.frame, night && styles.frameNight, style]}>
+        {night ? null : <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.wash]} />}
         {children}
       </View>
     </View>
@@ -25,6 +38,12 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: Layout.phone,
     backgroundColor: Palette.wash,
+  },
+  rootNight: {
+    backgroundColor: Night.bg,
+  },
+  frameNight: {
+    backgroundColor: Night.bg,
   },
   wash: {
     backgroundColor: Palette.wash,
