@@ -19,7 +19,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" options={{ title: text.inbox }} />
       <Tabs.Screen name="projects" options={{ title: text.today }} />
       <Tabs.Screen name="calendar" options={{ title: text.upcoming }} />
-      <Tabs.Screen name="browse" options={{ title: text.browse }} />
+      <Tabs.Screen name="browse" options={{ title: text.tabSettings }} />
       <Tabs.Screen name="settings" options={{ href: null, title: text.tabSettings }} />
     </Tabs>
   );
