@@ -13,7 +13,7 @@ const ICONS: Record<string, IconName> = {
   index: 'inbox',
   projects: 'calendar',
   calendar: 'month',
-  browse: 'menu',
+  browse: 'settings',
 };
 
 export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
