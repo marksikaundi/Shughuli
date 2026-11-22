@@ -1,19 +1,28 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
 import { Screen, useNightStatus } from '@/components/screen';
 import { TaskLine } from '@/components/task-line';
+import { ActivitySheet, TodayDisplaySheet, defaultTodayDisplay, type TodayDisplay, type TodaySorting } from '@/components/today-display';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
+import type { PersonId } from '@/data/people';
 import { startOfWeek, toDateKey, todayKey, useTasks, type Task } from '@/data/tasks';
 import { formatLocale } from '@/i18n/format';
-import { useCopy } from '@/lib/settings-copy';
+import { fill, useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
-type AgendaLayout = 'list' | 'calendar';
+const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
+const PERSON_NAMES: Record<PersonId, string> = {
+  olivia: 'Olivia',
+  amira: 'Amira',
+  jules: 'Jules',
+  leo: 'Leo',
+  noah: 'Noah',
+};
 
 export default function UpcomingScreen() {
   useNightStatus();
@@ -21,10 +30,13 @@ export default function UpcomingScreen() {
   const insets = useSafeAreaInsets();
   const { tasks, setTaskStatus } = useTasks();
   const weekStartsOn = usePreferencesStore((state) => state.prefs.weekStartsOn);
-  const visibility = usePreferencesStore((state) => state.prefs.completedVisibility);
+  const [display, setDisplay] = useState<TodayDisplay>(defaultTodayDisplay);
+  const [displayOpen, setDisplayOpen] = useState(false);
   const [selected, setSelected] = useState(() => keyToDate(todayKey()));
-  const [layout, setLayout] = useState<AgendaLayout>('list');
   const [menu, setMenu] = useState(false);
+  const [activity, setActivity] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
   const [monthOpen, setMonthOpen] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const today = todayKey();
@@ -35,19 +47,18 @@ export default function UpcomingScreen() {
   const week = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart]);
   const listStartKey = selectedKey > today ? selectedKey : today;
   const days = Array.from({ length: 18 }, (_, index) => addDays(keyToDate(listStartKey), index));
-  const byDay = useMemo(() => {
-    const grouped = new Map<string, Task[]>();
-    for (const task of tasks) {
-      if (visibility === 'hide' && task.status === 'done') continue;
-      const list = grouped.get(task.date) ?? [];
-      list.push(task);
-      grouped.set(task.date, list);
-    }
-    for (const list of grouped.values()) {
-      list.sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title));
-    }
-    return grouped;
-  }, [tasks, visibility]);
+  const byDay = new Map<string, Task[]>();
+  for (const task of tasks) {
+    if (!accepts(task, display, today)) continue;
+    const list = byDay.get(task.date) ?? [];
+    list.push(task);
+    byDay.set(task.date, list);
+  }
+  for (const list of byDay.values()) sortTasks(list, display.sorting);
+  const activityTasks = tasks.filter((task) => task.date >= today && accepts(task, display, today));
+  sortTasks(activityTasks, display.sorting);
+  const boardTasks = days.flatMap((date) => byDay.get(toDateKey(date)) ?? []);
+  const boardGroups = groupTasks(boardTasks, display, { none: text.none, high: text.highPriority, medium: text.mediumPriority, low: text.lowPriority });
 
   async function toggle(task: Task) {
     if (pendingId) return;
@@ -61,9 +72,37 @@ export default function UpcomingScreen() {
     }
   }
 
-  function chooseLayout(next: AgendaLayout) {
-    setLayout(next);
+  function togglePicked(id: string) {
+    setPicked((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  }
+
+  async function completePicked() {
+    const ids = picked;
+    setSelecting(false);
+    setPicked([]);
+    for (const id of ids) {
+      const task = tasks.find((item) => item.id === id);
+      if (task && task.status !== 'done') {
+        try {
+          await setTaskStatus(id, 'done');
+        } catch (error) {
+          Alert.alert(text.upcoming, error instanceof Error ? error.message : text.couldNotSaveTask);
+          return;
+        }
+      }
+    }
+  }
+
+  async function copyLink() {
     setMenu(false);
+    const link = 'shughuli://upcoming';
+    try {
+      const clipboard = await import('expo-clipboard');
+      await clipboard.setStringAsync(link);
+      Alert.alert(text.linkCopied);
+    } catch {
+      await Share.share({ message: link });
+    }
   }
 
   function pickMonth(month: number) {
@@ -83,10 +122,13 @@ export default function UpcomingScreen() {
           <View style={styles.pill}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={layout === 'list' ? text.calendarLayout : text.listLayout}
-              onPress={() => setLayout(layout === 'list' ? 'calendar' : 'list')}
+              accessibilityLabel={text.display}
+              onPress={() => {
+                setMenu(false);
+                setDisplayOpen(true);
+              }}
               style={[styles.iconButton, styles.iconButtonOn]}>
-              <Icon name={layout === 'list' ? 'month' : 'list'} size={18} color={Night.text} />
+              <Icon name="month" size={18} color={Night.text} />
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -105,7 +147,7 @@ export default function UpcomingScreen() {
             <Icon name="chevron" size={16} color={Night.text} />
           </Pressable>
 
-          {layout === 'calendar' ? (
+          {display.layout === 'calendar' ? (
             <MonthGrid
               selected={selected}
               week={week}
@@ -132,60 +174,172 @@ export default function UpcomingScreen() {
             </>
           )}
 
-          {(layout === 'calendar' ? [selected] : days).map((date) => {
-            const key = toDateKey(date);
-            const items = byDay.get(key) ?? [];
-            const label = heading(date, key, today, tomorrow, text.today, text.tomorrow);
-            const quiet = items.length === 0 && key !== today;
-            return (
-              <View key={key} style={styles.block}>
-                <View style={styles.dayHead}>
-                  <Text style={[styles.dayLabel, quiet && styles.dayLabelQuiet]}>{label}</Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={text.addTask}
-                    hitSlop={8}
-                    onPress={() => router.push({ pathname: '/add-task', params: { date: key } })}
-                    style={styles.add}>
-                    <Icon name="plus" size={20} color={quiet ? '#9A9A9A' : Night.text} />
-                  </Pressable>
+          {display.layout === 'board' ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.board}>
+              {boardGroups.map((group) => (
+                <View key={group.id} style={styles.column}>
+                  {group.title ? <Text style={styles.columnTitle}>{group.title}</Text> : null}
+                  {group.tasks.map((task) => (
+                    <View key={task.id} style={selecting && picked.includes(task.id) ? styles.picked : null}>
+                      <TaskLine
+                        agenda
+                        task={task}
+                        busy={pendingId === task.id}
+                        showMark={display.feedback === 'checkmark'}
+                        onToggle={() => (selecting ? togglePicked(task.id) : void toggle(task))}
+                        onOpen={() => (selecting ? togglePicked(task.id) : router.push({ pathname: '/add-task', params: { id: task.id } }))}
+                      />
+                    </View>
+                  ))}
                 </View>
-                {items.map((task) => (
-                  <TaskLine
-                    key={task.id}
-                    agenda
-                    task={task}
-                    busy={pendingId === task.id}
-                    onToggle={() => void toggle(task)}
-                    onOpen={() => router.push({ pathname: '/add-task', params: { id: task.id } })}
-                  />
-                ))}
-              </View>
-            );
-          })}
+              ))}
+            </ScrollView>
+          ) : (
+            (display.layout === 'calendar' ? [selected] : days).map((date) => {
+              const key = toDateKey(date);
+              const items = byDay.get(key) ?? [];
+              const label = heading(date, key, today, tomorrow, text.today, text.tomorrow);
+              const quiet = items.length === 0 && key !== today;
+              return (
+                <View key={key} style={styles.block}>
+                  <View style={styles.dayHead}>
+                    <Text style={[styles.dayLabel, quiet && styles.dayLabelQuiet]}>{label}</Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={text.addTask}
+                      hitSlop={8}
+                      onPress={() => router.push({ pathname: '/add-task', params: { date: key } })}
+                      style={styles.add}>
+                      <Icon name="plus" size={20} color={quiet ? '#9A9A9A' : Night.text} />
+                    </Pressable>
+                  </View>
+                  {items.map((task) => (
+                    <View key={task.id} style={selecting && picked.includes(task.id) ? styles.picked : null}>
+                      <TaskLine
+                        agenda
+                        task={task}
+                        busy={pendingId === task.id}
+                        showMark={display.feedback === 'checkmark'}
+                        onToggle={() => (selecting ? togglePicked(task.id) : void toggle(task))}
+                        onOpen={() => (selecting ? togglePicked(task.id) : router.push({ pathname: '/add-task', params: { id: task.id } }))}
+                      />
+                    </View>
+                  ))}
+                </View>
+              );
+            })
+          )}
         </ScrollView>
+
+        {selecting ? (
+          <View style={styles.selectBar}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={text.close}
+              onPress={() => {
+                setSelecting(false);
+                setPicked([]);
+              }}
+              style={styles.selectButton}>
+              <Icon name="close" size={16} color={Night.text} />
+            </Pressable>
+            <Text style={styles.selectCount}>{fill(text.selectedTasks, { count: picked.length })}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={text.completeSelected}
+              disabled={picked.length === 0}
+              onPress={() => void completePicked()}
+              style={[styles.selectButton, styles.selectDone, picked.length === 0 && styles.selectOff]}>
+              <Icon name="check" size={16} color={Night.text} />
+            </Pressable>
+          </View>
+        ) : null}
 
         {menu ? <Pressable accessibilityRole="button" accessibilityLabel={text.close} onPress={() => setMenu(false)} style={styles.backdrop} /> : null}
         {menu ? (
           <View style={styles.menu}>
-            <LayoutRow label={text.listLayout} selected={layout === 'list'} onPress={() => chooseLayout('list')} />
-            <LayoutRow label={text.calendarLayout} selected={layout === 'calendar'} onPress={() => chooseLayout('calendar')} />
+            <MenuRow icon="link" label={text.copyLinkUpcoming} onPress={() => void copyLink()} />
+            <View style={styles.menuLine} />
+            <MenuRow
+              icon="select"
+              label={text.selectTasks}
+              onPress={() => {
+                setMenu(false);
+                setPicked([]);
+                setSelecting(true);
+              }}
+            />
+            <View style={styles.menuLine} />
+            <MenuRow
+              icon="wave"
+              label={text.viewActivity}
+              onPress={() => {
+                setMenu(false);
+                setActivity(true);
+              }}
+            />
           </View>
         ) : null}
       </View>
 
       <MonthSheet year={selected.getFullYear()} month={selected.getMonth()} open={monthOpen} onClose={() => setMonthOpen(false)} onPick={pickMonth} />
+      {displayOpen ? (
+        <TodayDisplaySheet
+          value={display}
+          onClose={() => setDisplayOpen(false)}
+          onSave={(next) => {
+            setDisplay(next);
+            setDisplayOpen(false);
+          }}
+        />
+      ) : null}
+      {activity ? <ActivitySheet tasks={activityTasks} onClose={() => setActivity(false)} /> : null}
     </Screen>
   );
 }
 
-function LayoutRow({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+function MenuRow({ icon, label, onPress }: { icon: 'link' | 'select' | 'wave'; label: string; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} style={styles.menuRow}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={styles.menuRow}>
+      <Icon name={icon} size={20} color={Night.text} />
       <Text style={styles.menuLabel}>{label}</Text>
-      {selected ? <Icon name="check" size={16} color={Night.text} /> : null}
     </Pressable>
   );
+}
+
+function accepts(task: Task, display: TodayDisplay, today: string) {
+  if (!display.showCompleted && task.status === 'done') return false;
+  if (display.assignee !== 'default' && !task.people.includes(display.assignee)) return false;
+  if (display.priority !== 'all' && task.priority !== display.priority) return false;
+  if (display.deadline === 'overdue') return task.date < today;
+  if (display.deadline === 'today') return task.date === today;
+  if (display.deadline === 'week') return task.date >= today && task.date <= shiftKey(today, 6);
+  return true;
+}
+
+function sortTasks(tasks: Task[], sorting: TodaySorting) {
+  if (sorting === 'name') tasks.sort((a, b) => a.title.localeCompare(b.title));
+  else if (sorting === 'priority') tasks.sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || a.title.localeCompare(b.title));
+  else tasks.sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title));
+}
+
+function groupTasks(tasks: Task[], display: TodayDisplay, labels: { none: string; high: string; medium: string; low: string }) {
+  if (display.grouping === 'assignee') {
+    const buckets = new Map<string, Task[]>();
+    for (const task of tasks) {
+      const key = task.people[0] ?? 'none';
+      const list = buckets.get(key) ?? [];
+      list.push(task);
+      buckets.set(key, list);
+    }
+    return [...buckets.entries()].map(([id, list]) => ({
+      id,
+      title: id === 'none' ? labels.none : PERSON_NAMES[id as PersonId],
+      tasks: list,
+    }));
+  }
+  const titles = { high: labels.high, medium: labels.medium, low: labels.low };
+  return (['high', 'medium', 'low'] as const).map((id) => ({ id, title: titles[id], tasks: tasks.filter((task) => task.priority === id) }));
 }
 
 function MonthGrid({
@@ -448,24 +602,80 @@ const styles = StyleSheet.create({
   },
   menu: {
     position: 'absolute',
-    top: 52,
-    right: Layout.padding,
-    width: 180,
-    borderRadius: 14,
-    backgroundColor: '#2C2C2C',
-    paddingVertical: 6,
+    top: 48,
+    right: 0,
+    width: 268,
+    borderRadius: 18,
+    backgroundColor: '#3A3A3A',
+    paddingVertical: 4,
   },
   menuRow: {
-    minHeight: 44,
+    minHeight: 52,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 14,
   },
   menuLabel: {
+    flex: 1,
+    color: Night.text,
+    fontSize: 17,
+    fontWeight: 500,
+  },
+  menuLine: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 50,
+    backgroundColor: '#555555',
+  },
+  selectBar: {
+    marginTop: 8,
+    minHeight: 52,
+    borderRadius: 16,
+    backgroundColor: '#2C2C2C',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  selectButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#3A3A3A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectDone: {
+    backgroundColor: Night.accent,
+  },
+  selectOff: {
+    opacity: 0.4,
+  },
+  selectCount: {
+    color: Night.text,
+    fontSize: 15,
+    fontWeight: 600,
+  },
+  picked: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+  },
+  board: {
+    paddingTop: 18,
+    paddingBottom: 24,
+    gap: 12,
+  },
+  column: {
+    width: 260,
+    borderRadius: 16,
+    backgroundColor: '#242424',
+    padding: 12,
+  },
+  columnTitle: {
+    marginBottom: 8,
     color: Night.text,
     fontSize: 16,
-    fontWeight: 500,
+    fontWeight: 700,
   },
   sheetFill: {
     flex: 1,
