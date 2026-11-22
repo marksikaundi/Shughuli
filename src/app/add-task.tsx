@@ -27,9 +27,10 @@ import { usePreferencesStore } from '@/store/preferences';
 const PRIORITIES: Priority[] = ['low', 'medium', 'high'];
 
 export default function AddTaskScreen() {
-  const params = useLocalSearchParams<{ id?: string; project?: string }>();
+  const params = useLocalSearchParams<{ id?: string; project?: string; date?: string }>();
   const taskId = typeof params.id === 'string' ? params.id : undefined;
   const presetProject = typeof params.project === 'string' ? params.project : '';
+  const presetDate = typeof params.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : '';
   const { tasks } = useTasks();
   const task = taskId ? tasks.find((item) => item.id === taskId) : undefined;
 
@@ -39,10 +40,10 @@ export default function AddTaskScreen() {
 
   if (task) return <TaskEditor key={task.id} task={task} />;
 
-  return <TaskForm key={`new-${presetProject}`} initialProject={presetProject} />;
+  return <TaskForm key={`new-${presetProject}-${presetDate}`} initialProject={presetProject} initialDate={presetDate} />;
 }
 
-function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?: string }) {
+function TaskForm({ task, initialProject = '', initialDate = '' }: { task?: Task; initialProject?: string; initialDate?: string }) {
   const text = useCopy();
   const insets = useSafeAreaInsets();
   const { addTask, updateTask, deleteTask } = useTasks();
@@ -72,7 +73,7 @@ function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?:
   const [tagDraft, setTagDraft] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [date, setDate] = useState(task?.date ?? todayKey());
+  const [date, setDate] = useState(task?.date ?? (initialDate || todayKey()));
   const [start, setStart] = useState(task?.start ?? planningStart);
   const [scheduleOpen, setScheduleOpen] = useState<'date' | 'time' | null>(null);
 

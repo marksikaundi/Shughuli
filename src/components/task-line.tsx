@@ -14,12 +14,14 @@ export function TaskLine({
   onToggle,
   onOpen,
   showMark = true,
+  agenda = false,
 }: {
   task: Task;
   busy: boolean;
   onToggle: () => void;
   onOpen: () => void;
   showMark?: boolean;
+  agenda?: boolean;
 }) {
   const text = useCopy();
   const drag = useRef(new Animated.Value(0)).current;
@@ -55,8 +57,10 @@ export function TaskLine({
   const dateColor = task.date === today ? '#3CBF73' : soon > 0 && soon < 7 ? '#C4B5FD' : Night.muted;
   const border = Night.faint;
 
+  const projectName = task.project.trim() || text.inbox;
+
   return (
-    <Animated.View style={[styles.row, { transform: [{ translateX: drag }] }]} {...pan.panHandlers}>
+    <Animated.View style={[styles.row, agenda && styles.rowAgenda, { transform: [{ translateX: drag }] }]} {...pan.panHandlers}>
       <Pressable
         accessibilityRole="checkbox"
         accessibilityState={{ checked: done, disabled: busy }}
@@ -64,18 +68,28 @@ export function TaskLine({
         disabled={busy}
         hitSlop={8}
         onPress={onToggle}
-        style={[styles.box, { borderColor: border }, done && showMark && styles.boxDone]}>
+        style={[styles.box, { borderColor: agenda ? '#8E8E8E' : border }, done && showMark && styles.boxDone]}>
         {done && showMark ? <Icon name="check" size={13} color={Night.text} /> : null}
       </Pressable>
       <Pressable accessibilityRole="button" onPress={onOpen} style={styles.copy}>
         <Text style={[styles.title, done && styles.titleDone]} numberOfLines={2}>
           {task.title}
         </Text>
-        <View style={styles.when}>
-          <Icon name="calendar" size={12} color={dateColor} />
-          <Text style={[styles.whenText, { color: dateColor }]}>{dateLabel}</Text>
-        </View>
+        {agenda ? null : (
+          <View style={styles.when}>
+            <Icon name="calendar" size={12} color={dateColor} />
+            <Text style={[styles.whenText, { color: dateColor }]}>{dateLabel}</Text>
+          </View>
+        )}
       </Pressable>
+      {agenda ? (
+        <View style={styles.project}>
+          <Text style={styles.projectText} numberOfLines={1}>
+            {projectName}
+          </Text>
+          <Icon name={task.project.trim() ? 'folder' : 'inbox'} size={14} color={Night.muted} />
+        </View>
+      ) : null}
     </Animated.View>
   );
 }
@@ -101,6 +115,9 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Night.line,
+  },
+  rowAgenda: {
+    alignItems: 'center',
   },
   box: {
     marginTop: 2,
@@ -135,5 +152,18 @@ const styles = StyleSheet.create({
   whenText: {
     fontSize: 13,
     fontWeight: 600,
+  },
+  project: {
+    maxWidth: 120,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 8,
+  },
+  projectText: {
+    flexShrink: 1,
+    color: Night.muted,
+    fontSize: 13,
+    fontWeight: 500,
   },
 });
