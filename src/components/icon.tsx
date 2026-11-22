@@ -59,6 +59,10 @@ const ICONS = {
   restore: { ios: 'arrow.counterclockwise', android: 'settings_backup_restore', web: 'settings_backup_restore' },
   personCircle: { ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' },
   type: { ios: 'textformat.size', android: 'schedule', web: 'schedule' },
+  wallet: { ios: 'creditcard', android: 'account_balance_wallet', web: 'account_balance_wallet' },
+  appIcon: { ios: 'square.grid.2x2', android: 'apps', web: 'apps' },
+  list: { ios: 'list.bullet', android: 'format_list_bulleted', web: 'format_list_bulleted' },
+  plusBox: { ios: 'plus.square', android: 'add_box', web: 'add_box' },
 } as const;
 
 export type IconName = keyof typeof ICONS;
