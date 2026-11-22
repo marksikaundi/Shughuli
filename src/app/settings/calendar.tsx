@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState, type ReactNode } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { NightCard, NightFoot, NightPage } from '@/components/settings/night-page';
 import { Night } from '@/constants/night';
@@ -12,7 +12,7 @@ import {
   readCalendarLink,
   syncAllTasks,
 } from '@/lib/google-calendar';
-import { getCopy, useCopy } from '@/lib/settings-copy';
+import { useCopy } from '@/lib/settings-copy';
 import { useTaskStore } from '@/store/tasks';
 
 type Links = Awaited<ReturnType<typeof readCalendarLink>>;
@@ -21,12 +21,28 @@ export default function CalendarSettingsScreen() {
   const text = useCopy();
   const [links, setLinks] = useState<Links>(null);
   const [busy, setBusy] = useState<'google' | 'outlook' | null>(null);
+  const [pending, setPending] = useState<'google' | 'outlook' | null>(null);
+  const consentResolver = useRef<((allowed: boolean) => void) | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       void readCalendarLink().then(setLinks);
+      return () => answer(false);
     }, []),
   );
+
+  function askConsent(kind: 'google' | 'outlook') {
+    return new Promise<boolean>((resolve) => {
+      consentResolver.current = resolve;
+      setPending(kind);
+    });
+  }
+
+  function answer(allowed: boolean) {
+    consentResolver.current?.(allowed);
+    consentResolver.current = null;
+    setPending(null);
+  }
 
   async function connect(kind: 'google' | 'outlook') {
     if (busy) return;
@@ -36,7 +52,7 @@ export default function CalendarSettingsScreen() {
     } catch {
       granted = false;
     }
-    const consent = granted || (await confirmCalendarAccess());
+    const consent = granted || (await askConsent(kind));
     if (!consent) return;
     setBusy(kind);
     try {
@@ -77,6 +93,7 @@ export default function CalendarSettingsScreen() {
         <Text style={styles.cardTitle}>{text.syncTasksTitle}</Text>
         <Text style={styles.cardBody}>{text.syncTasksBody}</Text>
       </NightCard>
+      <ConsentDialog kind={pending} onAllow={() => answer(true)} onClose={() => answer(false)} />
     </NightPage>
   );
 }
@@ -170,14 +187,28 @@ function SyncPreview() {
   );
 }
 
-function confirmCalendarAccess() {
-  const text = getCopy();
-  return new Promise<boolean>((resolve) => {
-    Alert.alert(text.googleCalendar, text.googleConsent, [
-      { text: text.notNow, style: 'cancel', onPress: () => resolve(false) },
-      { text: text.confirm, onPress: () => resolve(true) },
-    ], { cancelable: true, onDismiss: () => resolve(false) });
-  });
+function ConsentDialog({ kind, onAllow, onClose }: { kind: 'google' | 'outlook' | null; onAllow: () => void; onClose: () => void }) {
+  const text = useCopy();
+  const outlook = kind === 'outlook';
+  return (
+    <Modal visible={kind !== null} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable style={styles.dialog} onPress={() => undefined}>
+          {outlook ? <OutlookMark /> : <GoogleMark />}
+          <Text style={styles.dialogTitle}>{outlook ? text.connectOutlook : text.googleCalendar}</Text>
+          <Text style={styles.dialogBody}>{text.calendarConsentRead}</Text>
+          <Text style={styles.dialogBody}>{text.calendarConsentWrite}</Text>
+          <Text style={styles.dialogBody}>{text.calendarConsentKeep}</Text>
+          <Pressable accessibilityRole="button" onPress={onAllow} style={({ pressed }) => [styles.continue, pressed && styles.pressed]}>
+            <Text style={styles.continueText}>{text.confirm}</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.dismiss, pressed && styles.pressed]}>
+            <Text style={styles.dismissText}>{text.notNow}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -334,5 +365,53 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72,
+  },
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.62)',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  dialog: {
+    borderRadius: 24,
+    backgroundColor: '#2A2A2A',
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 14,
+    gap: 10,
+  },
+  dialogTitle: {
+    color: Night.text,
+    fontSize: 22,
+    fontWeight: 700,
+  },
+  dialogBody: {
+    color: Night.muted,
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: 500,
+  },
+  continue: {
+    marginTop: 8,
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: Night.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  continueText: {
+    color: Night.text,
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  dismiss: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dismissText: {
+    color: Night.muted,
+    fontSize: 16,
+    fontWeight: 700,
   },
 });

@@ -406,6 +406,9 @@ export const en = {
   googleConnectFailed: 'Could not connect Google Calendar on this phone.',
   googleConsent:
     'Shughuli reads event titles, times, and notes from the Google calendars on this phone, from about a year ago through a year ahead, and can save them as tasks on this device. Scheduled tasks are written to a Shughuli calendar on that Google account. Google may sync those events with your Google account. Shughuli does not sell this information and does not upload it to its own server. The full policy is in Settings, under Privacy and security.',
+  calendarConsentRead: 'Shughuli reads event titles, times, and notes from the calendars on this phone, from about a year ago through a year ahead.',
+  calendarConsentWrite: 'Those events can be saved as tasks on this device. Scheduled tasks are written to a Shughuli calendar on that account.',
+  calendarConsentKeep: 'The account may sync those events. Shughuli does not sell this information and does not upload it to its own server.',
   notNow: 'Not now',
   back: 'Back',
   tasksLead: 'Every task on this phone, grouped by day.',
@@ -899,6 +902,9 @@ export const sw: { [K in keyof typeof en]: string } = {
   googleConnectFailed: 'Haikuweza kuunganisha Google Calendar kwenye simu hii.',
   googleConsent:
     'Shughuli husoma majina, muda, na madokezo ya matukio kwenye kalenda za Google zilizo kwenye simu hii, kuanzia takriban mwaka mmoja uliopita hadi mwaka mmoja ujao, na inaweza kuyahifadhi kama kazi kwenye kifaa hiki. Kazi zilizopangwa huandikwa kwenye kalenda ya Shughuli ya akaunti hiyo ya Google. Google inaweza kusawazisha matukio hayo na akaunti yako ya Google. Shughuli haiuzi taarifa hii wala haipeleki kwenye seva yake. Sera kamili iko kwenye Mipangilio, chini ya Faragha na usalama.',
+  calendarConsentRead: 'Shughuli husoma majina, muda, na madokezo ya matukio kwenye kalenda za simu hii, kuanzia takriban mwaka mmoja uliopita hadi mwaka mmoja ujao.',
+  calendarConsentWrite: 'Matukio hayo yanaweza kuhifadhiwa kama kazi kwenye kifaa hiki. Kazi zilizopangwa huandikwa kwenye kalenda ya Shughuli ya akaunti hiyo.',
+  calendarConsentKeep: 'Akaunti inaweza kusawazisha matukio hayo. Shughuli haiuzi taarifa hii wala haipeleki kwenye seva yake.',
   notNow: 'Sio sasa',
   back: 'Rudi',
   tasksLead: 'Kila kazi kwenye simu hii, zimepangwa kwa siku.',
