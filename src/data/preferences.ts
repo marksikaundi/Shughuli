@@ -15,10 +15,27 @@ export const APP_TINTS = [
   { id: 'blue', color: '#5B8DEF' },
   { id: 'rose', color: '#E58B86' },
   { id: 'violet', color: '#A78BDB' },
+  { id: 'moonstone', color: '#8AA4BE' },
+  { id: 'tangerine', color: '#E39A45' },
+  { id: 'lavender', color: '#B7A4E6' },
+  { id: 'blueberry', color: '#6E8FE8' },
+  { id: 'kale', color: '#7DAF86' },
+  { id: 'raspberry', color: '#E58B9A' },
+] as const;
+
+export const COLOR_THEMES = [
+  { id: 'shughuli', tint: 'coral', color: '#E15B52', ink: '#E15B52', wash: '#2A2A2A', pro: false },
+  { id: 'moonstone', tint: 'moonstone', color: '#8AA4BE', ink: '#A9B8C9', wash: '#2A3038', pro: false },
+  { id: 'tangerine', tint: 'tangerine', color: '#E39A45', ink: '#E8A15A', wash: '#322C28', pro: false },
+  { id: 'lavender', tint: 'lavender', color: '#B7A4E6', ink: '#C4B4EE', wash: '#2E2C36', pro: true },
+  { id: 'blueberry', tint: 'blueberry', color: '#6E8FE8', ink: '#8AA6F0', wash: '#2A2E38', pro: true },
+  { id: 'kale', tint: 'kale', color: '#7DAF86', ink: '#9BC49A', wash: '#2A322C', pro: true },
+  { id: 'raspberry', tint: 'raspberry', color: '#E58B9A', ink: '#E89AAB', wash: '#322A2E', pro: true },
 ] as const;
 
 export type AccentId = (typeof ACCENTS)[number]['id'];
 export type AppTintId = (typeof APP_TINTS)[number]['id'];
+export type ColorThemeId = (typeof COLOR_THEMES)[number]['id'];
 export type ThemeChoice = 'light' | 'dark' | 'system';
 export type FontSize = 'small' | 'default' | 'large';
 export type CompletedVisibility = 'show' | 'dim' | 'hide';
@@ -73,6 +90,8 @@ export type Preferences = {
   dateFormat: DateFormat;
   lastBackupAt: string | null;
   appTint: AppTintId;
+  colorTheme: ColorThemeId;
+  syncTheme: boolean;
   showTabLabels: boolean;
   showInboxTab: boolean;
   showTodayTab: boolean;
@@ -141,6 +160,8 @@ export const defaultPreferences: Preferences = {
   dateFormat: 'dmy',
   lastBackupAt: null,
   appTint: 'coral',
+  colorTheme: 'shughuli',
+  syncTheme: true,
   showTabLabels: true,
   showInboxTab: true,
   showTodayTab: true,
@@ -168,6 +189,10 @@ export function accentById(id: AccentId) {
 
 export function appTintById(id: AppTintId) {
   return APP_TINTS.find((item) => item.id === id) ?? APP_TINTS[0];
+}
+
+export function colorThemeById(id: ColorThemeId) {
+  return COLOR_THEMES.find((item) => item.id === id) ?? COLOR_THEMES[0];
 }
 
 export function runtimeFromPreferences(prefs: Preferences): RuntimePrefs {
@@ -243,6 +268,8 @@ export function sanitizePreferences(value: unknown): Preferences {
     dateFormat: oneOf(input.dateFormat, ['dmy', 'mdy', 'ymd'] as const, defaultPreferences.dateFormat),
     lastBackupAt: typeof input.lastBackupAt === 'string' ? input.lastBackupAt : null,
     appTint: oneOf(input.appTint, APP_TINTS.map((item) => item.id), defaultPreferences.appTint),
+    colorTheme: oneOf(input.colorTheme, COLOR_THEMES.map((item) => item.id), defaultPreferences.colorTheme),
+    syncTheme: bool(input.syncTheme, defaultPreferences.syncTheme),
     showTabLabels: bool(input.showTabLabels, defaultPreferences.showTabLabels),
     showInboxTab: bool(input.showInboxTab, defaultPreferences.showInboxTab),
     showTodayTab: bool(input.showTodayTab, defaultPreferences.showTodayTab),

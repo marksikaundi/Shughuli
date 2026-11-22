@@ -9,7 +9,7 @@ import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
 import { useCopy } from '@/lib/settings-copy';
 
-export function NightPage({ title, children, onBack }: { title: string; children: ReactNode; onBack?: () => void }) {
+export function NightPage({ title, children, onBack, trailing }: { title: string; children: ReactNode; onBack?: () => void; trailing?: ReactNode }) {
   useNightStatus();
   const insets = useSafeAreaInsets();
   const text = useCopy();
@@ -30,7 +30,7 @@ export function NightPage({ title, children, onBack }: { title: string; children
           <Text style={styles.title} numberOfLines={2}>
             {title}
           </Text>
-          <View style={styles.backSpacer} />
+          {trailing ?? <View style={styles.backSpacer} />}
         </View>
         {children}
       </ScrollView>

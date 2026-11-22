@@ -1,11 +1,13 @@
 import Constants from 'expo-constants';
 import { useLocalSearchParams } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { NightCard, NightChoice, NightFoot, NightPage, NightSwitch } from '@/components/settings/night-page';
+import { Icon } from '@/components/icon';
+import { NightCard, NightFoot, NightPage, NightSwitch } from '@/components/settings/night-page';
 import { useSave } from '@/components/settings/page';
 import { Night } from '@/constants/night';
-import { APP_TINTS, appTintById, type AppTintId } from '@/data/preferences';
+import { APP_TINTS, appTintById, COLOR_THEMES, colorThemeById, type AppTintId, type ColorThemeId, type ThemeChoice } from '@/data/preferences';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
@@ -26,28 +28,172 @@ export default function SettingsItemScreen() {
 function ThemePanel() {
   const text = useCopy();
   const theme = usePreferencesStore((state) => state.prefs.theme);
+  const colorTheme = usePreferencesStore((state) => state.prefs.colorTheme);
+  const syncTheme = usePreferencesStore((state) => state.prefs.syncTheme);
   const save = useSave();
-  const options = [
-    { id: 'light' as const, label: text.themeLight },
-    { id: 'dark' as const, label: text.themeDark },
-    { id: 'system' as const, label: text.themeSystem },
-  ];
+  const [sheet, setSheet] = useState(false);
+  const [help, setHelp] = useState(false);
+  const active = colorThemeById(colorTheme);
+  const names = themeNames(text);
+  const appearance = theme === 'dark' ? text.themeDark : theme === 'system' ? text.themeAuto : text.themeLight;
+  const standard = COLOR_THEMES.filter((item) => !item.pro);
+  const pro = COLOR_THEMES.filter((item) => item.pro);
 
   return (
-    <NightPage title={text.theme}>
-      <NightCard>
-        {options.map((option, index) => (
-          <NightChoice
-            key={option.id}
-            label={option.label}
-            selected={theme === option.id}
-            last={index === options.length - 1}
-            onPress={() => void save({ theme: option.id })}
-          />
-        ))}
-      </NightCard>
-      <NightFoot>{text.themeHint}</NightFoot>
+    <NightPage
+      title={text.theme}
+      trailing={
+        <Pressable accessibilityRole="button" accessibilityLabel={text.helpFeedback} onPress={() => setHelp(true)} style={styles.help}>
+          <Text style={styles.helpMark}>?</Text>
+        </Pressable>
+      }>
+      <View style={styles.syncCard}>
+        <View style={styles.syncCopy}>
+          <Text style={styles.syncLabel}>{text.syncTheme}</Text>
+          <Text style={styles.syncBody}>{text.syncThemeBody}</Text>
+        </View>
+        <Switch
+          accessibilityLabel={text.syncTheme}
+          value={syncTheme}
+          onValueChange={(value) => void save({ syncTheme: value })}
+          trackColor={{ false: '#3A3A3A', true: active.color }}
+          thumbColor={Night.text}
+        />
+      </View>
+
+      <Pressable accessibilityRole="button" accessibilityLabel={text.appearance} onPress={() => setSheet(true)} style={({ pressed }) => [styles.appearance, pressed && styles.pressed]}>
+        <Text style={styles.syncLabel}>{text.appearance}</Text>
+        <Text style={styles.appearanceValue}>{appearance}</Text>
+        <Text style={styles.caret}>↕</Text>
+      </Pressable>
+
+      {standard.map((item) => (
+        <ThemeCard key={item.id} item={item} name={names[item.id]} selected={colorTheme === item.id} onPress={() => void save({ colorTheme: item.id, appTint: item.tint })} />
+      ))}
+      <Text style={styles.proLabel}>{text.proThemes}</Text>
+      {pro.map((item) => (
+        <ThemeCard key={item.id} item={item} name={names[item.id]} selected={colorTheme === item.id} onPress={() => void save({ colorTheme: item.id, appTint: item.tint })} />
+      ))}
+
+      <ChoiceSheet
+        visible={sheet}
+        title={text.appearance}
+        selected={theme}
+        options={[
+          { id: 'light', label: text.themeLight },
+          { id: 'dark', label: text.themeDark },
+          { id: 'system', label: text.themeAuto },
+        ]}
+        onClose={() => setSheet(false)}
+        onSelect={(id) => {
+          setSheet(false);
+          void save({ theme: id as ThemeChoice });
+        }}
+      />
+      <HelpDialog visible={help} title={text.theme} body={text.themeHelpBody} action={text.close} onClose={() => setHelp(false)} />
     </NightPage>
+  );
+}
+
+function ThemeCard({
+  item,
+  name,
+  selected,
+  onPress,
+}: {
+  item: (typeof COLOR_THEMES)[number];
+  name: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={name}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [styles.themeCard, { backgroundColor: item.wash }, pressed && styles.pressed]}>
+      <View style={[styles.themeBanner, selected && styles.themeBannerOn, selected && { backgroundColor: item.color }]}>
+        <Text style={[styles.themeName, { color: selected ? Night.text : item.ink }]}>{name}</Text>
+      </View>
+      <View style={styles.previewBlock}>
+        <PreviewTask marked={selected} color={item.color} wide />
+        <PreviewTask marked={false} color={item.color} wide={false} />
+      </View>
+    </Pressable>
+  );
+}
+
+function PreviewTask({ marked, color, wide }: { marked: boolean; color: string; wide: boolean }) {
+  return (
+    <View style={styles.task}>
+      <View style={styles.radio} />
+      <View style={styles.lines}>
+        <View style={[styles.lineLong, { width: wide ? '78%' : '64%' }]} />
+        <View style={[styles.lineShort, { width: wide ? '46%' : '38%' }]} />
+      </View>
+      {marked ? <Icon name="check" size={16} color={color} /> : <View style={styles.checkSpace} />}
+    </View>
+  );
+}
+
+function themeNames(text: ReturnType<typeof useCopy>): Record<ColorThemeId, string> {
+  return {
+    shughuli: text.themeShughuli,
+    moonstone: text.themeMoonstone,
+    tangerine: text.themeTangerine,
+    lavender: text.themeLavender,
+    blueberry: text.themeBlueberry,
+    kale: text.themeKale,
+    raspberry: text.themeRaspberry,
+  };
+}
+
+function ChoiceSheet({
+  visible,
+  title,
+  options,
+  selected,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  title: string;
+  options: { id: string; label: string }[];
+  selected: string;
+  onClose: () => void;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable style={styles.sheet} onPress={() => undefined}>
+          <Text style={styles.sheetTitle}>{title}</Text>
+          {options.map((option) => (
+            <Pressable key={option.id} accessibilityRole="button" onPress={() => onSelect(option.id)} style={styles.sheetRow}>
+              <Text style={styles.sheetLabel}>{option.label}</Text>
+              {option.id === selected ? <Icon name="check" size={16} color={Night.accent} /> : null}
+            </Pressable>
+          ))}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function HelpDialog({ visible, title, body, action, onClose }: { visible: boolean; title: string; body: string; action: string; onClose: () => void }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable style={styles.sheet} onPress={() => undefined}>
+          <Text style={styles.sheetTitle}>{title}</Text>
+          <Text style={styles.helpBody}>{body}</Text>
+          <Pressable accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.helpAction, pressed && styles.pressed]}>
+            <Text style={styles.helpActionText}>{action}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -61,6 +207,12 @@ function AppIconPanel() {
     blue: text.tintBlue,
     rose: text.tintRose,
     violet: text.tintViolet,
+    moonstone: text.themeMoonstone,
+    tangerine: text.themeTangerine,
+    lavender: text.themeLavender,
+    blueberry: text.themeBlueberry,
+    kale: text.themeKale,
+    raspberry: text.themeRaspberry,
   };
 
   return (
@@ -73,7 +225,7 @@ function AppIconPanel() {
       </View>
       <NightCard>
         <View style={styles.swatches}>
-          {APP_TINTS.map((item) => {
+          {APP_TINTS.filter((item) => item.id === 'coral' || item.id === 'lime' || item.id === 'blue' || item.id === 'rose' || item.id === 'violet').map((item) => {
             const selected = tint === item.id;
             return (
               <Pressable
@@ -195,5 +347,176 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     fontWeight: 500,
+  },
+  help: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#3A3A3A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helpMark: {
+    color: Night.text,
+    fontSize: 18,
+    fontWeight: 700,
+  },
+  syncCard: {
+    marginTop: 18,
+    borderRadius: 16,
+    backgroundColor: Night.row,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  syncCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  syncLabel: {
+    color: Night.text,
+    fontSize: 16,
+    fontWeight: 600,
+  },
+  syncBody: {
+    color: Night.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: 500,
+  },
+  appearance: {
+    marginTop: 10,
+    minHeight: 54,
+    borderRadius: 16,
+    backgroundColor: Night.row,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  appearanceValue: {
+    color: Night.muted,
+    fontSize: 16,
+    fontWeight: 500,
+  },
+  caret: {
+    color: Night.muted,
+    fontSize: 14,
+    fontWeight: 700,
+  },
+  proLabel: {
+    marginTop: 22,
+    marginLeft: 4,
+    color: Night.faint,
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: 0.8,
+  },
+  themeCard: {
+    marginTop: 10,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  themeBanner: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  themeBannerOn: {
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
+  themeName: {
+    fontSize: 20,
+    fontWeight: 700,
+  },
+  previewBlock: {
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    gap: 12,
+  },
+  task: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  radio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: '#6E6E6E',
+  },
+  lines: {
+    flex: 1,
+    gap: 6,
+  },
+  lineLong: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4A4A4A',
+  },
+  lineShort: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#3A3A3A',
+  },
+  checkSpace: {
+    width: 16,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.62)',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  sheet: {
+    borderRadius: 24,
+    backgroundColor: '#2A2A2A',
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 18,
+    gap: 6,
+  },
+  sheetTitle: {
+    color: Night.text,
+    fontSize: 22,
+    fontWeight: 700,
+    marginBottom: 6,
+  },
+  sheetRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sheetLabel: {
+    flex: 1,
+    color: Night.text,
+    fontSize: 16,
+    fontWeight: 600,
+  },
+  helpBody: {
+    color: Night.muted,
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: 500,
+  },
+  helpAction: {
+    marginTop: 8,
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: Night.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helpActionText: {
+    color: Night.text,
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  pressed: {
+    opacity: 0.72,
   },
 });

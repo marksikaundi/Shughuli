@@ -6,17 +6,17 @@ import { Icon, type IconName } from '@/components/icon';
 import { Screen } from '@/components/screen';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
+import { type AppTintId, type ColorThemeId } from '@/data/preferences';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
 export function SettingsHome({ onClose }: { onClose?: () => void }) {
   const text = useCopy();
   const insets = useSafeAreaInsets();
-  const themeChoice = usePreferencesStore((state) => state.prefs.theme);
+  const colorTheme = usePreferencesStore((state) => state.prefs.colorTheme);
   const appTint = usePreferencesStore((state) => state.prefs.appTint);
-  const themeLabel = themeChoice === 'dark' ? text.themeDark : themeChoice === 'system' ? text.themeSystem : text.themeLight;
-  const tintLabel =
-    appTint === 'lime' ? text.tintLime : appTint === 'blue' ? text.tintBlue : appTint === 'rose' ? text.tintRose : appTint === 'violet' ? text.tintViolet : text.tintCoral;
+  const themeLabel = colorThemeLabel(colorTheme, text);
+  const tintLabel = appTintLabel(appTint, text);
 
   return (
     <Screen tone="night">
@@ -67,6 +67,30 @@ export function SettingsHome({ onClose }: { onClose?: () => void }) {
       </ScrollView>
     </Screen>
   );
+}
+
+function colorThemeLabel(id: ColorThemeId, text: ReturnType<typeof useCopy>) {
+  if (id === 'moonstone') return text.themeMoonstone;
+  if (id === 'tangerine') return text.themeTangerine;
+  if (id === 'lavender') return text.themeLavender;
+  if (id === 'blueberry') return text.themeBlueberry;
+  if (id === 'kale') return text.themeKale;
+  if (id === 'raspberry') return text.themeRaspberry;
+  return text.themeShughuli;
+}
+
+function appTintLabel(id: AppTintId, text: ReturnType<typeof useCopy>) {
+  if (id === 'lime') return text.tintLime;
+  if (id === 'blue') return text.tintBlue;
+  if (id === 'rose') return text.tintRose;
+  if (id === 'violet') return text.tintViolet;
+  if (id === 'moonstone') return text.themeMoonstone;
+  if (id === 'tangerine') return text.themeTangerine;
+  if (id === 'lavender') return text.themeLavender;
+  if (id === 'blueberry') return text.themeBlueberry;
+  if (id === 'kale') return text.themeKale;
+  if (id === 'raspberry') return text.themeRaspberry;
+  return text.tintCoral;
 }
 
 function openItem(id: 'theme' | 'appIcon' | 'navigation' | 'quickAdd' | 'whatsNew') {
