@@ -73,8 +73,10 @@ export default function CalendarSettingsScreen() {
 
   return (
     <NightPage title={text.tabCalendar}>
-      <ConnectButton mark={<GoogleMark />} label={text.connectGoogle} account={googleAccount} busy={busy === 'google'} onPress={() => void connect('google')} />
-      <ConnectButton mark={<OutlookMark />} label={text.connectOutlook} account={links?.outlookAccount} busy={busy === 'outlook'} onPress={() => void connect('outlook')} />
+      <View style={styles.connectRow}>
+        <ConnectButton mark={<GoogleMark />} label={text.connectGoogle} account={googleAccount} busy={busy === 'google'} onPress={() => void connect('google')} />
+        <ConnectButton mark={<OutlookMark />} label={text.connectOutlook} account={links?.outlookAccount} busy={busy === 'outlook'} onPress={() => void connect('outlook')} />
+      </View>
       <NightFoot>{text.calendarIntro}</NightFoot>
 
       <Text style={styles.section}>{text.whatYouCanDo}</Text>
@@ -212,29 +214,38 @@ function ConsentDialog({ kind, onAllow, onClose }: { kind: 'google' | 'outlook' 
 }
 
 const styles = StyleSheet.create({
-  connect: {
+  connectRow: {
     marginTop: 14,
-    minHeight: 58,
-    borderRadius: 16,
-    backgroundColor: Night.row,
-    paddingHorizontal: 16,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: 12,
   },
+  connect: {
+    flex: 1,
+    minHeight: 96,
+    borderRadius: 16,
+    backgroundColor: Night.row,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
   connectCopy: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   connectLabel: {
     color: Night.text,
-    fontSize: 17,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: 700,
+    textAlign: 'center',
   },
   account: {
+    marginTop: 2,
     color: Night.muted,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 500,
+    textAlign: 'center',
   },
   google: {
     width: 22,
