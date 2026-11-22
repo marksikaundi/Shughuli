@@ -1,7 +1,7 @@
 import { usePathname } from 'expo-router';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
-import { useEffect, useState } from 'react';
-import { Dimensions, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Dimensions, Keyboard, PanResponder, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/icon';
 import { QuickAdd } from '@/components/quick-add';
@@ -31,12 +31,38 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
   const visible = state.routes
     .filter((route) => !hiddenTab(route.name, showInbox, showToday, showUpcoming))
     .sort((a, b) => tabRank(a.name, tabOrder) - tabRank(b.name, tabOrder));
-  const splitAt = visible.findIndex((route) => route.name === (visible.some((route) => route.name === 'calendar') ? 'calendar' : 'browse'));
-  const left = splitAt === -1 ? visible : visible.slice(0, splitAt);
-  const right = splitAt === -1 ? [] : visible.slice(splitAt);
   const showAdd = !pathname.startsWith('/settings');
   const [composing, setComposing] = useState(false);
   const [keyboard, setKeyboard] = useState(0);
+  const start = placeFab(0, Dimensions.get('window').height - 160, true);
+  const [spot, setSpot] = useState(start);
+  const pos = useRef(start);
+  const origin = useRef(start);
+  const moved = useRef(false);
+  const placed = useRef(false);
+  const pan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        moved.current = false;
+        origin.current = pos.current;
+      },
+      onPanResponderMove: (_, gesture) => {
+        if (Math.abs(gesture.dx) > 6 || Math.abs(gesture.dy) > 6) moved.current = true;
+        const next = placeFab(origin.current.x + gesture.dx, origin.current.y + gesture.dy, false);
+        pos.current = next;
+        setSpot(next);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        const next = placeFab(origin.current.x + gesture.dx, origin.current.y + gesture.dy, true);
+        pos.current = next;
+        setSpot(next);
+        if (!moved.current) setComposing(true);
+      },
+    }),
+  ).current;
   if (!showAdd && composing) setComposing(false);
 
   useEffect(() => {
@@ -96,53 +122,83 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
   }
 
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, composing && styles.wrapOpen, composing && { bottom: keyboard }]}>
+    <View
+      pointerEvents="box-none"
+      onLayout={(event) => {
+        if (placed.current) return;
+        const { width, height } = event.nativeEvent.layout;
+        const next = placeFab(width - FAB, height - Math.max(insets.bottom, 8) - 150, true, width, height);
+        pos.current = next;
+        setSpot(next);
+        placed.current = true;
+      }}
+      style={[styles.overlay, composing && { bottom: keyboard }]}>
       {composing ? (
         <>
           <Pressable style={styles.backdrop} onPress={() => setComposing(false)} />
-          <QuickAdd onClose={() => setComposing(false)} bottomInset={keyboard > 0 ? 8 : Math.max(insets.bottom, 8)} />
+          <View style={styles.composer}>
+            <QuickAdd onClose={() => setComposing(false)} bottomInset={keyboard > 0 ? 8 : Math.max(insets.bottom, 8)} />
+          </View>
         </>
-      ) : null}
-      {composing ? null : (
-      <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-        <View style={styles.row}>
-          {left.map((route) => renderTab(route))}
+      ) : (
+        <>
           {showAdd ? (
-            <View style={styles.fabSlot}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={text.addTask}
-                onPress={() => setComposing(true)}
-                style={({ pressed }) => [styles.fab, { backgroundColor: tint }, pressed && styles.pressed]}>
-                <Icon name="plus" size={28} color={Night.text} />
-              </Pressable>
+            <View
+              accessibilityRole="button"
+              accessibilityLabel={text.addTask}
+              {...pan.panHandlers}
+              style={[styles.fab, { backgroundColor: tint, left: spot.x, top: spot.y }]}>
+              <Icon name="plus" size={28} color={Night.text} />
             </View>
           ) : null}
-          {right.map((route) => renderTab(route))}
-        </View>
-      </View>
+          <View style={styles.dock} pointerEvents="box-none">
+            <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+              <View style={styles.row}>{visible.map((route) => renderTab(route))}</View>
+            </View>
+          </View>
+        </>
       )}
     </View>
   );
 }
 
+const FAB = 56;
+
+function placeFab(x: number, y: number, snapRight: boolean, width = Dimensions.get('window').width, height = Dimensions.get('window').height) {
+  const margin = 16;
+  const nextX = snapRight ? width - FAB - margin : Math.min(Math.max(x, margin), width - FAB - margin);
+  const nextY = Math.min(Math.max(y, 64), height - FAB - margin);
+  return { x: nextX, y: nextY };
+}
+
 const styles = StyleSheet.create({
-  wrap: {
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 20,
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  composer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  dock: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
     alignItems: 'center',
-    zIndex: 20,
-  },
-  wrapOpen: {
-    top: 0,
-    justifyContent: 'flex-end',
-    alignItems: 'stretch',
-  },
-  backdrop: {
-    flex: 1,
-    width: '100%',
   },
   bar: {
     width: '100%',
@@ -176,28 +232,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 600,
   },
-  fabSlot: {
-    width: 72,
-    height: 54,
-    alignItems: 'center',
-  },
   fab: {
     position: 'absolute',
-    top: -18,
-    width: 56,
-    height: 56,
+    width: FAB,
+    height: FAB,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 2,
+    zIndex: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.28,
     shadowRadius: 12,
     elevation: 8,
-  },
-  pressed: {
-    opacity: 0.86,
   },
 });
 
