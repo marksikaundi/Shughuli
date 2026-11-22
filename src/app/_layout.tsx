@@ -12,6 +12,7 @@ import { syncAllTasks } from '@/lib/google-calendar';
 import { syncPlannedReminders } from '@/lib/planned-reminders';
 import { usePreferencesStore } from '@/store/preferences';
 import { useProjectStore } from '@/store/projects';
+import { useSectionStore } from '@/store/sections';
 import { useTaskStore } from '@/store/tasks';
 
 SplashScreen.preventAutoHideAsync();
@@ -19,6 +20,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const ready = useTaskStore((state) => state.ready);
   const projectsReady = useProjectStore((state) => state.ready);
+  const sectionsReady = useSectionStore((state) => state.ready);
   const prefsReady = usePreferencesStore((state) => state.ready);
   const error = useTaskStore((state) => state.error);
   const reduceMotion = usePreferencesStore((state) => state.prefs.reduceMotion);
@@ -26,7 +28,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     Promise.all([
-      useTaskStore.getState().hydrate().then(() => useProjectStore.getState().hydrate()),
+      useTaskStore.getState().hydrate().then(() => Promise.all([useProjectStore.getState().hydrate(), useSectionStore.getState().hydrate()])),
       usePreferencesStore.getState().hydrate(),
     ])
       .then(async () => {
@@ -42,7 +44,7 @@ export default function RootLayout() {
 
   return (
     <View style={styles.root}>
-      {!ready || !projectsReady || !prefsReady ? null : error ? (
+      {!ready || !projectsReady || !sectionsReady || !prefsReady ? null : error ? (
         <View style={styles.error}>
           <Text style={styles.errorTitle}>{text.couldNotOpenTasks}</Text>
           <Text style={styles.errorBody}>{error}</Text>

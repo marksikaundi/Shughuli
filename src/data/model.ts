@@ -37,6 +37,7 @@ export type Task = {
   kind: TaskKind;
   subtasks: Subtask[];
   comments: TaskComment[];
+  sectionId: string | null;
 };
 
 export type TaskDraft = {
@@ -49,6 +50,7 @@ export type TaskDraft = {
   tags: string[];
   subtasks?: Subtask[];
   comments?: TaskComment[];
+  sectionId?: string | null;
 };
 
 export function toDateKey(date: Date) {

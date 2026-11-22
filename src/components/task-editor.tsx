@@ -18,6 +18,7 @@ import { TaskDateSheet } from '@/components/quick-add';
 import { Night } from '@/constants/night';
 import { formatClock, toDateKey, useTasks, type Priority, type Subtask, type Task, type TaskComment } from '@/data/tasks';
 import { useProjects } from '@/data/projects';
+import { useSections } from '@/store/sections';
 import { formatLocale } from '@/i18n/format';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
@@ -29,11 +30,13 @@ export function TaskEditor({ task }: { task: Task }) {
   const insets = useSafeAreaInsets();
   const { tasks, updateTask, setTaskStatus, deleteTask } = useTasks();
   const { projects } = useProjects();
+  const { sections } = useSections();
   const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
   const weekStartsOn = usePreferencesStore((state) => state.prefs.weekStartsOn);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [project, setProject] = useState(task.project.trim());
+  const [sectionId, setSectionId] = useState<string | null>(task.sectionId);
   const [priority, setPriority] = useState<Priority>(task.priority);
   const [date, setDate] = useState(task.date);
   const [start, setStart] = useState(task.start);
@@ -44,6 +47,7 @@ export function TaskEditor({ task }: { task: Task }) {
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(false);
+  const [sectionsOpen, setSectionsOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
   const [subtasksOpen, setSubtasksOpen] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -64,6 +68,7 @@ export function TaskEditor({ task }: { task: Task }) {
       tags: task.tags,
       subtasks: subtasks.filter((item) => item.title.trim()),
       comments,
+      sectionId,
     };
   }
 
@@ -170,6 +175,25 @@ export function TaskEditor({ task }: { task: Task }) {
               </Pressable>
               {projects.map((item) => (
                 <Pressable key={item.id} onPress={() => { setProject(item.name); setProjectsOpen(false); }} style={styles.menuRow}>
+                  <Text style={styles.menuText}>{item.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+
+          {sections.length > 0 ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={text.section} onPress={() => setSectionsOpen((open) => !open)} style={styles.field}>
+              <Icon name="menu" size={18} color={Night.muted} />
+              <Text style={styles.fieldText}>{sections.find((item) => item.id === sectionId)?.name ?? text.none}</Text>
+            </Pressable>
+          ) : null}
+          {sectionsOpen ? (
+            <View style={styles.menu}>
+              <Pressable onPress={() => { setSectionId(null); setSectionsOpen(false); }} style={styles.menuRow}>
+                <Text style={styles.menuText}>{text.none}</Text>
+              </Pressable>
+              {sections.map((item) => (
+                <Pressable key={item.id} onPress={() => { setSectionId(item.id); setSectionsOpen(false); }} style={styles.menuRow}>
                   <Text style={styles.menuText}>{item.name}</Text>
                 </Pressable>
               ))}

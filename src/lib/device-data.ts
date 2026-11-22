@@ -294,6 +294,7 @@ function normalizeTask(value: unknown): Task {
     kind,
     subtasks: Array.isArray(input.subtasks) ? input.subtasks.flatMap(readBackupSubtask) : [],
     comments: Array.isArray(input.comments) ? input.comments.flatMap(readBackupComment) : [],
+    sectionId: typeof input.sectionId === 'string' ? input.sectionId : null,
   };
 }
 

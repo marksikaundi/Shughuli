@@ -280,6 +280,7 @@ function eventToTask(event: Calendar.Event, index: number): Task {
     kind: 'task',
     subtasks: [],
     comments: [],
+    sectionId: null,
   };
 }
 

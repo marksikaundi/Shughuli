@@ -74,6 +74,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       tags: draft.tags,
       subtasks: draft.subtasks ?? current.subtasks,
       comments: draft.comments ?? current.comments,
+      sectionId: draft.sectionId === undefined ? current.sectionId : draft.sectionId,
     };
     await persistTask(task, 'update');
     set({ tasks: get().tasks.map((item) => (item.id === id ? task : item)) });
@@ -255,6 +256,7 @@ function toTask(row: typeof taskTable.$inferSelect): Task {
     starred: row.starred,
     kind: row.kind as TaskKind,
     ...readDetails(row.details),
+    sectionId: row.sectionId ?? null,
   };
 }
 
@@ -305,6 +307,7 @@ function taskValues(task: Task) {
     starred: task.starred,
     kind: task.kind,
     details: JSON.stringify({ subtasks: task.subtasks ?? [], comments: task.comments ?? [] }),
+    sectionId: task.sectionId ?? null,
   };
 }
 
@@ -328,6 +331,7 @@ function draftToTask(draft: TaskDraft): Task {
     kind: 'task',
     subtasks: draft.subtasks ?? [],
     comments: draft.comments ?? [],
+    sectionId: draft.sectionId ?? null,
   };
 }
 

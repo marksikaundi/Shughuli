@@ -11,11 +11,13 @@ export function TaskLine({
   busy,
   onToggle,
   onOpen,
+  showMark = true,
 }: {
   task: Task;
   busy: boolean;
   onToggle: () => void;
   onOpen: () => void;
+  showMark?: boolean;
 }) {
   const text = useCopy();
   const done = task.status === 'done';
@@ -39,8 +41,8 @@ export function TaskLine({
         disabled={busy}
         hitSlop={8}
         onPress={onToggle}
-        style={[styles.box, { borderColor: border }, done && styles.boxDone]}>
-        {done ? <Icon name="check" size={13} color={Night.text} /> : null}
+        style={[styles.box, { borderColor: border }, done && showMark && styles.boxDone]}>
+        {done && showMark ? <Icon name="check" size={13} color={Night.text} /> : null}
       </Pressable>
       <Pressable accessibilityRole="button" onPress={onOpen} style={styles.copy}>
         <Text style={[styles.title, done && styles.titleDone]} numberOfLines={2}>

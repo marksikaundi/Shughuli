@@ -20,6 +20,14 @@ export const taskTable = sqliteTable('tasks', {
   notificationId: text('notification_id'),
   noteUri: text('note_uri'),
   details: text('details').notNull().default(''),
+  sectionId: text('section_id'),
+});
+
+export const sectionTable = sqliteTable('sections', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  createdAt: text('created_at').notNull(),
 });
 
 export const projectTable = sqliteTable('projects', {

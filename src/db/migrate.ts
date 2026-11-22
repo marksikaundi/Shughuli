@@ -41,12 +41,21 @@ export async function migrateDb() {
         { idx: 0, when: 1, tag: '0000_init', breakpoints: true },
         { idx: 1, when: 2, tag: '0001_projects', breakpoints: true },
         { idx: 2, when: 3, tag: '0002_task_details', breakpoints: true },
+        { idx: 3, when: 4, tag: '0003_sections', breakpoints: true },
+        { idx: 4, when: 5, tag: '0004_task_section', breakpoints: true },
       ],
     },
     migrations: {
       m0000: init,
       m0001: projects,
       m0002: 'ALTER TABLE `tasks` ADD `details` text NOT NULL DEFAULT \'\';',
+      m0003: `CREATE TABLE IF NOT EXISTS \`sections\` (
+  \`id\` text PRIMARY KEY NOT NULL,
+  \`name\` text NOT NULL,
+  \`description\` text NOT NULL DEFAULT '',
+  \`created_at\` text NOT NULL
+);`,
+      m0004: 'ALTER TABLE `tasks` ADD `section_id` text;',
     },
   });
 }
