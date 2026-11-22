@@ -28,7 +28,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     Promise.all([
-      useTaskStore.getState().hydrate().then(() => Promise.all([useProjectStore.getState().hydrate(), useSectionStore.getState().hydrate()])),
+      useTaskStore
+        .getState()
+        .hydrate()
+        .then(() => useProjectStore.getState().hydrate())
+        .then(() => useSectionStore.getState().hydrate()),
       usePreferencesStore.getState().hydrate(),
     ])
       .then(async () => {
