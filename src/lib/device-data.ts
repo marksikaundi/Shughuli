@@ -292,7 +292,23 @@ function normalizeTask(value: unknown): Task {
     scheduled: input.scheduled !== false,
     starred: input.starred === true,
     kind,
+    subtasks: Array.isArray(input.subtasks) ? input.subtasks.flatMap(readBackupSubtask) : [],
+    comments: Array.isArray(input.comments) ? input.comments.flatMap(readBackupComment) : [],
   };
+}
+
+function readBackupSubtask(value: unknown) {
+  if (!value || typeof value !== 'object') return [];
+  const item = value as { id?: unknown; title?: unknown; done?: unknown };
+  if (typeof item.id !== 'string' || typeof item.title !== 'string') return [];
+  return [{ id: item.id, title: item.title, done: item.done === true }];
+}
+
+function readBackupComment(value: unknown) {
+  if (!value || typeof value !== 'object') return [];
+  const item = value as { id?: unknown; body?: unknown; createdAt?: unknown };
+  if (typeof item.id !== 'string' || typeof item.body !== 'string') return [];
+  return [{ id: item.id, body: item.body, createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString() }];
 }
 
 async function shareTextFile(contents: string, filename: string, mimeType: string, uti: string) {

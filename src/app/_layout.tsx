@@ -60,8 +60,9 @@ export default function RootLayout() {
             <Stack.Screen
               name="add-task"
               options={{
-                presentation: 'modal',
-                animation: reduceMotion ? 'none' : 'slide_from_bottom',
+                presentation: 'transparentModal',
+                animation: reduceMotion ? 'none' : 'fade',
+                contentStyle: { backgroundColor: 'transparent' },
               }}
             />
             <Stack.Screen

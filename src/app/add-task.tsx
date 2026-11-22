@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DateCalendarPopup, TimePopup } from '@/components/due-pickers';
 import { Icon, IconButton } from '@/components/icon';
 import { Screen } from '@/components/screen';
+import { TaskEditor } from '@/components/task-editor';
 import { Layout, Palette, cardShadow } from '@/constants/palette';
 import { useProjects } from '@/data/projects';
 import { formatClock, formatDate, toDateKey, useTasks, type Priority, type Task } from '@/data/tasks';
@@ -36,7 +37,9 @@ export default function AddTaskScreen() {
     return <MissingTask />;
   }
 
-  return <TaskForm key={task?.id ?? `new-${presetProject}`} task={task} initialProject={presetProject} />;
+  if (task) return <TaskEditor key={task.id} task={task} />;
+
+  return <TaskForm key={`new-${presetProject}`} initialProject={presetProject} />;
 }
 
 function TaskForm({ task, initialProject = '' }: { task?: Task; initialProject?: string }) {

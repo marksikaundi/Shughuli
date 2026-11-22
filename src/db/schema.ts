@@ -19,6 +19,7 @@ export const taskTable = sqliteTable('tasks', {
   kind: text('kind').notNull(),
   notificationId: text('notification_id'),
   noteUri: text('note_uri'),
+  details: text('details').notNull().default(''),
 });
 
 export const projectTable = sqliteTable('projects', {

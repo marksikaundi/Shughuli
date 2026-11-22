@@ -40,11 +40,13 @@ export async function migrateDb() {
       entries: [
         { idx: 0, when: 1, tag: '0000_init', breakpoints: true },
         { idx: 1, when: 2, tag: '0001_projects', breakpoints: true },
+        { idx: 2, when: 3, tag: '0002_task_details', breakpoints: true },
       ],
     },
     migrations: {
       m0000: init,
       m0001: projects,
+      m0002: 'ALTER TABLE `tasks` ADD `details` text NOT NULL DEFAULT \'\';',
     },
   });
 }

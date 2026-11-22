@@ -6,6 +6,18 @@ export type TaskCategory = 'work' | 'personal';
 export type Priority = 'low' | 'medium' | 'high';
 export type TaskKind = 'task' | 'meeting';
 
+export type Subtask = {
+  id: string;
+  title: string;
+  done: boolean;
+};
+
+export type TaskComment = {
+  id: string;
+  body: string;
+  createdAt: string;
+};
+
 export type Task = {
   id: string;
   title: string;
@@ -23,6 +35,8 @@ export type Task = {
   scheduled: boolean;
   starred: boolean;
   kind: TaskKind;
+  subtasks: Subtask[];
+  comments: TaskComment[];
 };
 
 export type TaskDraft = {
@@ -33,6 +47,8 @@ export type TaskDraft = {
   priority: Priority;
   project: string;
   tags: string[];
+  subtasks?: Subtask[];
+  comments?: TaskComment[];
 };
 
 export function toDateKey(date: Date) {

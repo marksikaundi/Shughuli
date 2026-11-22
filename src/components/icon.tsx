@@ -22,6 +22,8 @@ const ICONS = {
   menu: { ios: 'line.3.horizontal', android: 'menu', web: 'menu' },
   search: { ios: 'magnifyingglass', android: 'search', web: 'search' },
   help: { ios: 'questionmark.circle', android: 'help', web: 'help' },
+  flag: { ios: 'flag', android: 'flag', web: 'flag' },
+  alarm: { ios: 'alarm', android: 'alarm', web: 'alarm' },
   done: { ios: 'checkmark.circle', android: 'task_alt', web: 'task_alt' },
   pending: { ios: 'clock', android: 'pending', web: 'pending' },
   briefcase: { ios: 'briefcase.fill', android: 'work', web: 'work' },

@@ -5,7 +5,7 @@ import { create } from 'zustand';
 import { getDb } from '@/db/client';
 import { migrateDb } from '@/db/migrate';
 import { taskTable } from '@/db/schema';
-import { addMinutes, type Priority, type Task, type TaskCategory, type TaskDraft, type TaskKind, type TaskStatus } from '@/data/model';
+import { addMinutes, type Priority, type Subtask, type Task, type TaskCategory, type TaskComment, type TaskDraft, type TaskKind, type TaskStatus } from '@/data/model';
 import { getCopy } from '@/i18n/translate';
 import type { PersonId } from '@/data/people';
 import { deleteAllNotes, deleteTaskNote, saveTaskNote } from '@/lib/notes';
@@ -72,6 +72,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       priority: draft.priority,
       project: draft.project,
       tags: draft.tags,
+      subtasks: draft.subtasks ?? current.subtasks,
+      comments: draft.comments ?? current.comments,
     };
     await persistTask(task, 'update');
     set({ tasks: get().tasks.map((item) => (item.id === id ? task : item)) });
@@ -252,7 +254,36 @@ function toTask(row: typeof taskTable.$inferSelect): Task {
     scheduled: row.scheduled,
     starred: row.starred,
     kind: row.kind as TaskKind,
+    ...readDetails(row.details),
   };
+}
+
+function readDetails(raw: string | null | undefined) {
+  const empty = { subtasks: [] as Subtask[], comments: [] as TaskComment[] };
+  if (!raw) return empty;
+  try {
+    const parsed = JSON.parse(raw) as { subtasks?: unknown; comments?: unknown };
+    return {
+      subtasks: Array.isArray(parsed.subtasks) ? parsed.subtasks.flatMap(readSubtask) : [],
+      comments: Array.isArray(parsed.comments) ? parsed.comments.flatMap(readComment) : [],
+    };
+  } catch {
+    return empty;
+  }
+}
+
+function readSubtask(value: unknown): Subtask[] {
+  if (!value || typeof value !== 'object') return [];
+  const item = value as Partial<Subtask>;
+  if (typeof item.id !== 'string' || typeof item.title !== 'string') return [];
+  return [{ id: item.id, title: item.title, done: item.done === true }];
+}
+
+function readComment(value: unknown): TaskComment[] {
+  if (!value || typeof value !== 'object') return [];
+  const item = value as Partial<TaskComment>;
+  if (typeof item.id !== 'string' || typeof item.body !== 'string') return [];
+  return [{ id: item.id, body: item.body, createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString() }];
 }
 
 function taskValues(task: Task) {
@@ -273,6 +304,7 @@ function taskValues(task: Task) {
     scheduled: task.scheduled,
     starred: task.starred,
     kind: task.kind,
+    details: JSON.stringify({ subtasks: task.subtasks ?? [], comments: task.comments ?? [] }),
   };
 }
 
@@ -294,6 +326,8 @@ function draftToTask(draft: TaskDraft): Task {
     scheduled: true,
     starred: false,
     kind: 'task',
+    subtasks: draft.subtasks ?? [],
+    comments: draft.comments ?? [],
   };
 }
 

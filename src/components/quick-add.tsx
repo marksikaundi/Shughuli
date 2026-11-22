@@ -177,7 +177,7 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
       </View>
 
       {dateOpen ? (
-        <DateSheet
+        <TaskDateSheet
           date={date}
           time={time}
           weekStartsOn={weekStartsOn}
@@ -196,7 +196,7 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
   );
 }
 
-function DateSheet({
+export function TaskDateSheet({
   date,
   time,
   weekStartsOn,
