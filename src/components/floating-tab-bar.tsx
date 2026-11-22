@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: FAB,
     height: FAB,
-    borderRadius: 18,
+    borderRadius: FAB / 2,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 3,
