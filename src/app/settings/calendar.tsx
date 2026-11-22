@@ -24,6 +24,7 @@ export default function CalendarSettingsScreen() {
   const [links, setLinks] = useState<Links>(null);
   const [busy, setBusy] = useState<'google' | 'outlook' | null>(null);
   const [pending, setPending] = useState<'google' | 'outlook' | null>(null);
+  const [more, setMore] = useState(false);
   const consentResolver = useRef<((allowed: boolean) => void) | null>(null);
 
   useFocusEffect(
@@ -87,7 +88,7 @@ export default function CalendarSettingsScreen() {
         <Text style={styles.cardTitle}>{text.seeEventsTitle}</Text>
         <Text style={styles.cardBody}>
           {text.seeEventsBody}{' '}
-          <Text style={styles.link} onPress={() => Alert.alert(text.seeEventsTitle, text.seeEventsMore)}>
+          <Text style={styles.link} onPress={() => setMore(true)}>
             {text.learnMore}
           </Text>
         </Text>
@@ -98,6 +99,7 @@ export default function CalendarSettingsScreen() {
         <Text style={styles.cardBody}>{text.syncTasksBody}</Text>
       </NightCard>
       <ConsentDialog kind={pending} onAllow={() => answer(true)} onClose={() => answer(false)} />
+      <InfoDialog visible={more} title={text.seeEventsTitle} body={text.seeEventsMore} action={text.close} onClose={() => setMore(false)} />
     </NightPage>
   );
 }
@@ -165,6 +167,30 @@ function SyncPreview() {
         </View>
       ))}
     </View>
+  );
+}
+
+function InfoDialog({ visible, title, body, action, onClose }: { visible: boolean; title: string; body: string; action: string; onClose: () => void }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable style={styles.dialog} onPress={() => undefined}>
+          <View style={styles.dialogMarks}>
+            <View style={[styles.markChip, { backgroundColor: '#3A3A3A' }]}>
+              <GoogleCalendarLogo size={22} />
+            </View>
+            <View style={[styles.markChip, { backgroundColor: '#3A3A3A' }]}>
+              <OutlookLogo size={22} />
+            </View>
+          </View>
+          <Text style={styles.dialogTitle}>{title}</Text>
+          <Text style={styles.dialogBody}>{body}</Text>
+          <Pressable accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.continue, pressed && styles.pressed]}>
+            <Text style={styles.continueText}>{action}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -341,8 +367,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2A2A',
     paddingHorizontal: 22,
     paddingTop: 22,
-    paddingBottom: 14,
+    paddingBottom: 18,
     gap: 10,
+  },
+  dialogMarks: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  markChip: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dialogTitle: {
     color: Night.text,
