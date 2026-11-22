@@ -7,7 +7,9 @@ import { Icon, type IconName } from '@/components/icon';
 import { QuickAdd } from '@/components/quick-add';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
+import { appTintById } from '@/data/preferences';
 import { useCopy } from '@/lib/settings-copy';
+import { usePreferencesStore } from '@/store/preferences';
 
 const ICONS: Record<string, IconName> = {
   index: 'inbox',
@@ -19,15 +21,27 @@ const ICONS: Record<string, IconName> = {
 export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   const text = useCopy();
   const pathname = usePathname();
+  const showLabels = usePreferencesStore((state) => state.prefs.showTabLabels);
+  const showInbox = usePreferencesStore((state) => state.prefs.showInboxTab);
+  const showToday = usePreferencesStore((state) => state.prefs.showTodayTab);
+  const showUpcoming = usePreferencesStore((state) => state.prefs.showUpcomingTab);
+  const tint = appTintById(usePreferencesStore((state) => state.prefs.appTint)).color;
   const focusedKey = state.routes[state.index]?.key;
-  const routes = state.routes.filter((route) => route.name !== 'settings');
-  const upcomingIndex = routes.findIndex((route) => route.name === 'calendar');
-  const left = upcomingIndex === -1 ? routes : routes.slice(0, upcomingIndex);
-  const right = upcomingIndex === -1 ? [] : routes.slice(upcomingIndex);
+  const visible = state.routes.filter((route) => route.name !== 'settings' && !hiddenTab(route.name, showInbox, showToday, showUpcoming));
+  const splitAt = visible.findIndex((route) => route.name === (visible.some((route) => route.name === 'calendar') ? 'calendar' : 'browse'));
+  const left = splitAt === -1 ? visible : visible.slice(0, splitAt);
+  const right = splitAt === -1 ? [] : visible.slice(splitAt);
   const showAdd = !pathname.startsWith('/settings');
   const [composing, setComposing] = useState(false);
   const [keyboard, setKeyboard] = useState(0);
   if (!showAdd && composing) setComposing(false);
+
+  useEffect(() => {
+    const focused = state.routes[state.index];
+    if (!focused || !hiddenTab(focused.name, showInbox, showToday, showUpcoming)) return;
+    const fallback = state.routes.find((route) => route.name === 'browse');
+    if (fallback) navigateToTab(fallback.key);
+  }, [navigateToTab, showInbox, showToday, showUpcoming, state.index, state.routes]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidShow';
@@ -43,12 +57,12 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
     };
   }, []);
 
-  function renderTab(route: (typeof routes)[number]) {
+  function renderTab(route: (typeof visible)[number]) {
     const focused = route.key === focusedKey;
     const { options } = descriptors[route.key];
     const label = options.title ?? route.name;
     const name = typeof label === 'string' ? label : route.name;
-    const color = focused ? Night.accent : Night.muted;
+    const color = focused ? tint : Night.muted;
     const onPress = () => {
       const event = emitter.emit({
         type: 'tabPress',
@@ -65,13 +79,15 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
         accessibilityLabel={name}
         accessibilityState={{ selected: focused }}
         onPress={onPress}
-        style={styles.item}>
+        style={[styles.item, !showLabels && styles.itemIcons]}>
         <View style={styles.icon}>
           <Icon name={ICONS[route.name] ?? 'inbox'} size={22} color={color} />
         </View>
-        <Text style={[styles.label, { color }]} numberOfLines={1}>
-          {name}
-        </Text>
+        {showLabels ? (
+          <Text style={[styles.label, { color }]} numberOfLines={1}>
+            {name}
+          </Text>
+        ) : null}
       </Pressable>
     );
   }
@@ -94,7 +110,7 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
                 accessibilityRole="button"
                 accessibilityLabel={text.addTask}
                 onPress={() => setComposing(true)}
-                style={({ pressed }) => [styles.fab, pressed && styles.pressed]}>
+                style={({ pressed }) => [styles.fab, { backgroundColor: tint }, pressed && styles.pressed]}>
                 <Icon name="plus" size={28} color={Night.text} />
               </Pressable>
             </View>
@@ -143,6 +159,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
   },
+  itemIcons: {
+    height: 48,
+  },
   icon: {
     width: 46,
     height: 28,
@@ -165,7 +184,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: Night.accent,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
@@ -179,3 +197,10 @@ const styles = StyleSheet.create({
     opacity: 0.86,
   },
 });
+
+function hiddenTab(name: string, inbox: boolean, today: boolean, upcoming: boolean) {
+  if (name === 'index') return !inbox;
+  if (name === 'projects') return !today;
+  if (name === 'calendar') return !upcoming;
+  return false;
+}

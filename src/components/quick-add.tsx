@@ -32,6 +32,9 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
   const planningStart = usePreferencesStore((state) => state.prefs.planningStart);
   const timeFormat = usePreferencesStore((state) => state.prefs.timeFormat);
   const weekStartsOn = usePreferencesStore((state) => state.prefs.weekStartsOn);
+  const showPriority = usePreferencesStore((state) => state.prefs.quickAddPriority);
+  const showProject = usePreferencesStore((state) => state.prefs.quickAddProject);
+  const showDate = usePreferencesStore((state) => state.prefs.quickAddDate);
   const [title, setTitle] = useState('');
   const [project, setProject] = useState('');
   const [priority, setPriority] = useState<Priority>(priorityDefault);
@@ -128,6 +131,7 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
           onSubmitEditing={() => void submit()}
         />
         <View style={styles.tools}>
+          {showPriority ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={text.priority}
@@ -138,6 +142,8 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
             style={styles.plus}>
             <Icon name="plus" size={16} color={Night.text} />
           </Pressable>
+          ) : null}
+          {showProject ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={project || text.inbox}
@@ -151,6 +157,8 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
               {project || text.inbox}
             </Text>
           </Pressable>
+          ) : null}
+          {showDate ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={text.chooseDueDate}
@@ -165,6 +173,7 @@ export function QuickAdd({ onClose, bottomInset }: { onClose: () => void; bottom
               {dateLabel}
             </Text>
           </Pressable>
+          ) : null}
           <View style={styles.spacer} />
           <Pressable
             accessibilityRole="button"

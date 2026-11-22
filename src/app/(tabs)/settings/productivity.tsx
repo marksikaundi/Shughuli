@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
 
 import { OptionSheet, SettingsRow, SettingsSection, StepperRow, ToggleRow } from '@/components/settings/controls';
 import { SettingsPage, clockMinutes, minutesToClock, useReminderToggle, useSave } from '@/components/settings/page';
@@ -13,6 +14,9 @@ export default function ProductivityScreen() {
   const save = useSave();
   const toggle = useReminderToggle();
   const [sheet, setSheet] = useState<'week' | 'priority' | 'done' | 'sound' | null>(null);
+  const params = useLocalSearchParams<{ part?: string }>();
+  const part = params.part === 'reminders' || params.part === 'notifications' ? params.part : 'plan';
+  const title = part === 'reminders' ? text.reminders : part === 'notifications' ? text.notificationRow : text.productivity;
   const priorityLabel = prefs.defaultPriority === 'high' ? text.high : prefs.defaultPriority === 'medium' ? text.medium : text.low;
   const doneLabel =
     prefs.completedVisibility === 'show' ? text.showCompleted : prefs.completedVisibility === 'dim' ? text.dimCompleted : text.hideCompleted;
@@ -20,7 +24,8 @@ export default function ProductivityScreen() {
     prefs.notificationSound === 'chime' ? text.timerChime : prefs.notificationSound === 'bell' ? text.timerBell : prefs.notificationSound === 'none' ? text.timerSilent : text.soundSystem;
 
   return (
-    <SettingsPage title={text.productivity}>
+    <SettingsPage title={title}>
+      {part === 'plan' ? (
       <SettingsSection>
         <SettingsRow icon="calendar" label={text.weekStart} value={prefs.weekStartsOn === 'sunday' ? text.sunday : text.monday} onPress={() => setSheet('week')} />
         <StepperRow
@@ -47,14 +52,21 @@ export default function ProductivityScreen() {
         <StepperRow icon="done" label={text.dailyGoal} value={prefs.dailyGoal} min={1} max={20} step={1} onChange={(dailyGoal) => void save({ dailyGoal })} />
         <SettingsRow icon="check" label={text.completedVisibility} value={doneLabel} onPress={() => setSheet('done')} border={false} />
       </SettingsSection>
-      <SettingsSection title={text.notifications} footer={`${text.endOfDay}: ${formatClock('20:00')}. ${text.reminderFoot}`}>
+      ) : null}
+      {part === 'reminders' ? (
+      <SettingsSection footer={`${text.endOfDay}: ${formatClock('20:00')}. ${text.reminderFoot}`}>
         <ToggleRow icon="bell" label={text.taskReminders} value={prefs.taskReminders} onChange={(value) => void toggle('taskReminders', value)} />
         <ToggleRow icon="check" label={text.habitReminders} value={prefs.habitReminders} onChange={(value) => void toggle('habitReminders', value)} />
         <ToggleRow icon="sun" label={text.dailyPlanning} value={prefs.dailyPlanning} onChange={(value) => void toggle('dailyPlanning', value)} />
-        <ToggleRow icon="moon" label={text.endOfDay} value={prefs.endOfDayReview} onChange={(value) => void toggle('endOfDayReview', value)} />
+        <ToggleRow icon="moon" label={text.endOfDay} value={prefs.endOfDayReview} onChange={(value) => void toggle('endOfDayReview', value)} border={false} />
+      </SettingsSection>
+      ) : null}
+      {part === 'notifications' ? (
+      <SettingsSection footer={text.reminderFoot}>
         <SettingsRow icon="speaker" label={text.sound} value={soundLabel} onPress={() => setSheet('sound')} />
         <ToggleRow icon="wave" label={text.vibration} value={prefs.notificationVibration} onChange={(value) => void toggle('notificationVibration', value)} border={false} />
       </SettingsSection>
+      ) : null}
       <OptionSheet
         visible={sheet === 'sound'}
         title={text.sound}

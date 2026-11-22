@@ -15,12 +15,18 @@ import {
   syncAllTasks,
 } from '@/lib/google-calendar';
 import { getCopy, useCopy } from '@/lib/settings-copy';
+import { usePreferencesStore } from '@/store/preferences';
 import { useTaskStore } from '@/store/tasks';
 
 export function SettingsHome({ onClose }: { onClose?: () => void }) {
   const text = useCopy();
   const insets = useSafeAreaInsets();
+  const themeChoice = usePreferencesStore((state) => state.prefs.theme);
+  const appTint = usePreferencesStore((state) => state.prefs.appTint);
   const [connecting, setConnecting] = useState(false);
+  const themeLabel = themeChoice === 'dark' ? text.themeDark : themeChoice === 'system' ? text.themeSystem : text.themeLight;
+  const tintLabel =
+    appTint === 'lime' ? text.tintLime : appTint === 'blue' ? text.tintBlue : appTint === 'rose' ? text.tintRose : appTint === 'violet' ? text.tintViolet : text.tintCoral;
 
   async function connectCalendar() {
     if (connecting) return;
@@ -73,17 +79,17 @@ export function SettingsHome({ onClose }: { onClose?: () => void }) {
 
         <Text style={styles.section}>{text.personalization}</Text>
         <View style={styles.card}>
-          <SettingRow icon="palette" label={text.theme} value="Shughuli" onPress={() => router.push('/settings/appearance')} />
-          <SettingRow icon="appIcon" label={text.appIcon} value="Shughuli" onPress={() => openItem('appIcon')} />
+          <SettingRow icon="palette" label={text.theme} value={themeLabel} onPress={() => openItem('theme')} />
+          <SettingRow icon="appIcon" label={text.appIcon} value={tintLabel} onPress={() => openItem('appIcon')} />
           <SettingRow icon="list" label={text.navigation} onPress={() => openItem('navigation')} />
           <SettingRow icon="plusBox" label={text.quickAdd} onPress={() => openItem('quickAdd')} last />
         </View>
 
         <Text style={styles.section}>{text.productivity}</Text>
         <View style={styles.card}>
-          <SettingRow icon="trend" label={text.productivity} onPress={() => router.push('/settings/productivity')} />
-          <SettingRow icon="alarm" label={text.reminders} onPress={() => router.push('/settings/productivity')} />
-          <SettingRow icon="bell" label={text.notificationRow} onPress={() => router.push('/settings/productivity')} last />
+          <SettingRow icon="trend" label={text.productivity} onPress={() => router.push({ pathname: '/settings/productivity', params: { part: 'plan' } })} />
+          <SettingRow icon="alarm" label={text.reminders} onPress={() => router.push({ pathname: '/settings/productivity', params: { part: 'reminders' } })} />
+          <SettingRow icon="bell" label={text.notificationRow} onPress={() => router.push({ pathname: '/settings/productivity', params: { part: 'notifications' } })} last />
         </View>
 
         <View style={styles.card}>
@@ -96,7 +102,7 @@ export function SettingsHome({ onClose }: { onClose?: () => void }) {
   );
 }
 
-function openItem(id: 'appIcon' | 'navigation' | 'quickAdd' | 'whatsNew') {
+function openItem(id: 'theme' | 'appIcon' | 'navigation' | 'quickAdd' | 'whatsNew') {
   router.push({ pathname: '/settings/item', params: { id } });
 }
 

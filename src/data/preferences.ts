@@ -9,7 +9,16 @@ export const ACCENTS = [
   { id: 'violet', color: '#A78BDB', ring: '#C9B6F4' },
 ] as const;
 
+export const APP_TINTS = [
+  { id: 'coral', color: '#E15B52' },
+  { id: 'lime', color: '#C8F06E' },
+  { id: 'blue', color: '#5B8DEF' },
+  { id: 'rose', color: '#E58B86' },
+  { id: 'violet', color: '#A78BDB' },
+] as const;
+
 export type AccentId = (typeof ACCENTS)[number]['id'];
+export type AppTintId = (typeof APP_TINTS)[number]['id'];
 export type ThemeChoice = 'light' | 'dark' | 'system';
 export type FontSize = 'small' | 'default' | 'large';
 export type CompletedVisibility = 'show' | 'dim' | 'hide';
@@ -55,6 +64,14 @@ export type Preferences = {
   timeFormat: TimeFormat;
   dateFormat: DateFormat;
   lastBackupAt: string | null;
+  appTint: AppTintId;
+  showTabLabels: boolean;
+  showInboxTab: boolean;
+  showTodayTab: boolean;
+  showUpcomingTab: boolean;
+  quickAddPriority: boolean;
+  quickAddProject: boolean;
+  quickAddDate: boolean;
 };
 
 export const defaultPreferences: Preferences = {
@@ -95,10 +112,22 @@ export const defaultPreferences: Preferences = {
   timeFormat: '12',
   dateFormat: 'dmy',
   lastBackupAt: null,
+  appTint: 'coral',
+  showTabLabels: true,
+  showInboxTab: true,
+  showTodayTab: true,
+  showUpcomingTab: true,
+  quickAddPriority: true,
+  quickAddProject: true,
+  quickAddDate: true,
 };
 
 export function accentById(id: AccentId) {
   return ACCENTS.find((item) => item.id === id) ?? ACCENTS[0];
+}
+
+export function appTintById(id: AppTintId) {
+  return APP_TINTS.find((item) => item.id === id) ?? APP_TINTS[0];
 }
 
 export function runtimeFromPreferences(prefs: Preferences): RuntimePrefs {
@@ -158,6 +187,14 @@ export function sanitizePreferences(value: unknown): Preferences {
     timeFormat: oneOf(input.timeFormat, ['12', '24'] as const, defaultPreferences.timeFormat),
     dateFormat: oneOf(input.dateFormat, ['dmy', 'mdy', 'ymd'] as const, defaultPreferences.dateFormat),
     lastBackupAt: typeof input.lastBackupAt === 'string' ? input.lastBackupAt : null,
+    appTint: oneOf(input.appTint, APP_TINTS.map((item) => item.id), defaultPreferences.appTint),
+    showTabLabels: bool(input.showTabLabels, defaultPreferences.showTabLabels),
+    showInboxTab: bool(input.showInboxTab, defaultPreferences.showInboxTab),
+    showTodayTab: bool(input.showTodayTab, defaultPreferences.showTodayTab),
+    showUpcomingTab: bool(input.showUpcomingTab, defaultPreferences.showUpcomingTab),
+    quickAddPriority: bool(input.quickAddPriority, defaultPreferences.quickAddPriority),
+    quickAddProject: bool(input.quickAddProject, defaultPreferences.quickAddProject),
+    quickAddDate: bool(input.quickAddDate, defaultPreferences.quickAddDate),
   };
 }
 
