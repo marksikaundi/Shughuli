@@ -36,6 +36,11 @@ export type Preferences = {
   defaultPriority: Priority;
   defaultDuration: number;
   dailyGoal: number;
+  weeklyGoal: number;
+  useKarma: boolean;
+  goalCelebrations: boolean;
+  daysOff: number[];
+  vacationMode: boolean;
   completedVisibility: CompletedVisibility;
   taskReminders: boolean;
   habitReminders: boolean;
@@ -84,6 +89,11 @@ export const defaultPreferences: Preferences = {
   defaultPriority: 'low',
   defaultDuration: 60,
   dailyGoal: 5,
+  weeklyGoal: 30,
+  useKarma: true,
+  goalCelebrations: true,
+  daysOff: [0, 6],
+  vacationMode: false,
   completedVisibility: 'hide',
   taskReminders: true,
   habitReminders: false,
@@ -155,6 +165,11 @@ export function sanitizePreferences(value: unknown): Preferences {
     defaultPriority: oneOf(input.defaultPriority, ['low', 'medium', 'high'] as const, defaultPreferences.defaultPriority),
     defaultDuration: clamp(input.defaultDuration, 15, 180, defaultPreferences.defaultDuration),
     dailyGoal: clamp(input.dailyGoal, 1, 20, defaultPreferences.dailyGoal),
+    weeklyGoal: clamp(input.weeklyGoal, 1, 100, defaultPreferences.weeklyGoal),
+    useKarma: bool(input.useKarma, defaultPreferences.useKarma),
+    goalCelebrations: bool(input.goalCelebrations, defaultPreferences.goalCelebrations),
+    daysOff: dayList(input.daysOff),
+    vacationMode: bool(input.vacationMode, defaultPreferences.vacationMode),
     completedVisibility: oneOf(
       input.completedVisibility,
       ['show', 'dim', 'hide'] as const,
@@ -212,6 +227,12 @@ function oneOf<T extends string>(value: unknown, options: readonly T[], fallback
 
 function bool(value: unknown, fallback: boolean) {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function dayList(value: unknown) {
+  if (!Array.isArray(value)) return [0, 6];
+  const days = value.filter((item): item is number => typeof item === 'number' && Number.isInteger(item) && item >= 0 && item <= 6);
+  return [...new Set(days)];
 }
 
 function clamp(value: unknown, min: number, max: number, fallback: number) {
