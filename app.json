@@ -126,7 +126,12 @@
           ]
         }
       ],
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "recordAudioAndroid": false
+        }
+      ],
       "expo-asset"
     ],
     "experiments": {
