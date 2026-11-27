@@ -2,3 +2,5 @@
 - The application in settings specific the Reminder screen needs fix, as most things arent functional. 
 - - urgent upcoming Reminder popup using defult, need new designed
 - Cross improvements of the app features and UI
+
+ACCESS DATA: src/data/release-notes.ts.

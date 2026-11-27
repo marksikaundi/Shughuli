@@ -1,4 +1,3 @@
-import Constants from 'expo-constants';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
@@ -7,7 +6,9 @@ import { Icon, type IconName } from '@/components/icon';
 import { NightCard, NightFoot, NightPage } from '@/components/settings/night-page';
 import { useSave } from '@/components/settings/page';
 import { Night } from '@/constants/night';
+import { RELEASES } from '@/data/release-notes';
 import { APP_TINTS, appTintById, COLOR_THEMES, colorThemeById, QUICK_ADD_ACTIONS, QUICK_ADD_PRO, type AppTintId, type ColorThemeId, type QuickAddAction, type TabId, type ThemeChoice } from '@/data/preferences';
+import { fill } from '@/i18n/translate';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
@@ -567,15 +568,46 @@ function ActionRow({
 
 function WhatsNewPanel() {
   const text = useCopy();
-  const version = Constants.expoConfig?.version ?? '1.0.0';
 
   return (
     <NightPage title={text.whatsNew}>
-      <Text style={styles.version}>Shughuli {version}</Text>
       <NightCard>
         <Text style={styles.note}>{text.whatsNewBody}</Text>
       </NightCard>
+      {RELEASES.map((release) => (
+        <View key={release.version}>
+          <Text style={styles.releaseTitle}>{fill(text.releaseVersion, { version: release.version })}</Text>
+          <NightCard>
+            {release.features.map((feature, index) => (
+              <FeatureRow
+                key={feature.title}
+                icon={feature.icon}
+                title={text[feature.title]}
+                body={text[feature.body]}
+                last={index === release.features.length - 1}
+              />
+            ))}
+          </NightCard>
+        </View>
+      ))}
     </NightPage>
+  );
+}
+
+function FeatureRow({ icon, title, body, last }: { icon: IconName; title: string; body: string; last: boolean }) {
+  return (
+    <View>
+      <View style={styles.feature}>
+        <View style={styles.featureMark}>
+          <Icon name={icon} size={18} color={Night.accent} />
+        </View>
+        <View style={styles.featureCopy}>
+          <Text style={styles.featureTitle}>{title}</Text>
+          <Text style={styles.featureBody}>{body}</Text>
+        </View>
+      </View>
+      {last ? null : <View style={styles.featureLine} />}
+    </View>
   );
 }
 
@@ -632,6 +664,48 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     fontWeight: 500,
+  },
+  releaseTitle: {
+    marginTop: 28,
+    marginLeft: 4,
+    color: Night.text,
+    fontSize: 22,
+    fontWeight: 700,
+  },
+  feature: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  featureMark: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Night.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  featureTitle: {
+    color: Night.text,
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  featureBody: {
+    color: Night.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: 500,
+  },
+  featureLine: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 66,
+    backgroundColor: '#3A3A3A',
   },
   help: {
     width: 36,
