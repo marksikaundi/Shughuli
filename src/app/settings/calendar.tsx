@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { GoogleCalendarLogo, OutlookLogo } from '@/components/calendar-logos';
 
@@ -24,6 +24,7 @@ export default function CalendarSettingsScreen() {
   const [links, setLinks] = useState<Links>(null);
   const [busy, setBusy] = useState<'google' | 'outlook' | null>(null);
   const [pending, setPending] = useState<'google' | 'outlook' | null>(null);
+  const [failure, setFailure] = useState<{ kind: 'google' | 'outlook'; message: string } | null>(null);
   const [more, setMore] = useState(false);
   const [tip, setTip] = useState(false);
   const tipPinned = useRef(false);
@@ -70,9 +71,8 @@ export default function CalendarSettingsScreen() {
       await syncAllTasks(useTaskStore.getState().tasks);
       setLinks(next);
     } catch (error) {
-      const title = kind === 'google' ? text.googleCalendar : text.connectOutlook;
       const fallback = kind === 'google' ? text.googleConnectFailed : text.outlookConnectFailed;
-      Alert.alert(title, error instanceof Error ? error.message : fallback);
+      setFailure({ kind, message: error instanceof Error ? error.message : fallback });
     } finally {
       setBusy(null);
     }
@@ -128,6 +128,7 @@ export default function CalendarSettingsScreen() {
         <Text style={styles.cardBody}>{text.syncTasksBody}</Text>
       </NightCard>
       <ConsentDialog kind={pending} onAllow={() => answer(true)} onClose={() => answer(false)} />
+      <ErrorDialog failure={failure} onClose={() => setFailure(null)} />
       <InfoDialog visible={more} title={text.seeEventsTitle} body={text.seeEventsMore} action={text.close} onClose={() => setMore(false)} />
     </NightPage>
   );
@@ -247,7 +248,48 @@ function ConsentDialog({ kind, onAllow, onClose }: { kind: 'google' | 'outlook' 
   );
 }
 
+function ErrorDialog({
+  failure,
+  onClose,
+}: {
+  failure: { kind: 'google' | 'outlook'; message: string } | null;
+  onClose: () => void;
+}) {
+  const text = useCopy();
+  const outlook = failure?.kind === 'outlook';
+  return (
+    <Modal visible={failure !== null} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable style={styles.dialog} onPress={() => undefined}>
+          <View style={styles.alertBadge}>
+            <Text style={styles.alertMark}>!</Text>
+          </View>
+          <Text style={styles.dialogTitle}>{outlook ? text.connectOutlook : text.googleCalendar}</Text>
+          <Text style={styles.dialogBody}>{failure?.message}</Text>
+          <Pressable accessibilityRole="button" onPress={onClose} style={({ pressed }) => [styles.continue, pressed && styles.pressed]}>
+            <Text style={styles.continueText}>{text.close}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
+  alertBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Night.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  alertMark: {
+    color: Night.accent,
+    fontSize: 22,
+    fontWeight: 800,
+  },
   connectRow: {
     marginTop: 14,
     flexDirection: 'row',
