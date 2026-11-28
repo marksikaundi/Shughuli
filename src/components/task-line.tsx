@@ -75,6 +75,11 @@ export function TaskLine({
         <Text style={[styles.title, done && styles.titleDone]} numberOfLines={2}>
           {task.title}
         </Text>
+        {task.description.trim() ? (
+          <Text style={styles.note} numberOfLines={1}>
+            {task.description.trim()}
+          </Text>
+        ) : null}
         {agenda ? null : (
           <View style={styles.when}>
             <Icon name="calendar" size={12} color={dateColor} />
@@ -142,6 +147,11 @@ const styles = StyleSheet.create({
   titleDone: {
     color: Night.muted,
     textDecorationLine: 'line-through',
+  },
+  note: {
+    marginTop: 2,
+    color: Night.muted,
+    fontSize: 14,
   },
   when: {
     marginTop: 4,

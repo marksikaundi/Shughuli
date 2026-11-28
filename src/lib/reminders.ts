@@ -117,7 +117,7 @@ export async function scheduleTaskReminder(task: Task) {
   if (Platform.OS === 'web' || task.status === 'done') return null;
   const prefs = getRuntimePrefs();
   const urgent = prefs.urgentAlerts === 'time' && task.priority === 'high';
-  if (!prefs.taskReminders && !urgent) return null;
+  if (!prefs.taskReminders && !urgent && task.remind !== true) return null;
 
   const when = taskMoment(task.date, task.start);
   if (when.getTime() <= Date.now()) return null;

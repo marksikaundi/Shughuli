@@ -265,13 +265,14 @@ function toTask(row: typeof taskTable.$inferSelect): Task {
 }
 
 function readDetails(raw: string | null | undefined) {
-  const empty = { subtasks: [] as Subtask[], comments: [] as TaskComment[] };
+  const empty = { subtasks: [] as Subtask[], comments: [] as TaskComment[], remind: false };
   if (!raw) return empty;
   try {
-    const parsed = JSON.parse(raw) as { subtasks?: unknown; comments?: unknown };
+    const parsed = JSON.parse(raw) as { subtasks?: unknown; comments?: unknown; remind?: unknown };
     return {
       subtasks: Array.isArray(parsed.subtasks) ? parsed.subtasks.flatMap(readSubtask) : [],
       comments: Array.isArray(parsed.comments) ? parsed.comments.flatMap(readComment) : [],
+      remind: parsed.remind === true,
     };
   } catch {
     return empty;
@@ -310,7 +311,7 @@ function taskValues(task: Task) {
     scheduled: task.scheduled,
     starred: task.starred,
     kind: task.kind,
-    details: JSON.stringify({ subtasks: task.subtasks ?? [], comments: task.comments ?? [] }),
+    details: JSON.stringify({ subtasks: task.subtasks ?? [], comments: task.comments ?? [], remind: task.remind === true }),
     sectionId: task.sectionId ?? null,
   };
 }
@@ -336,6 +337,7 @@ function draftToTask(draft: TaskDraft): Task {
     subtasks: draft.subtasks ?? [],
     comments: draft.comments ?? [],
     sectionId: draft.sectionId ?? null,
+    remind: draft.remind === true,
   };
 }
 

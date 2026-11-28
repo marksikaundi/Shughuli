@@ -549,11 +549,9 @@ function actionNames(text: ReturnType<typeof useCopy>): Record<QuickAddAction, s
     project: text.project,
     date: text.dueDate,
     assignee: text.assignee,
-    attachment: text.attachment,
     priority: text.priority,
     reminders: text.reminders,
     labels: text.labels,
-    deadline: text.deadline,
   };
 }
 
@@ -566,10 +564,8 @@ function ActionMark({ id }: { id: QuickAddAction }) {
 function actionIcon(id: QuickAddAction): IconName {
   if (id === 'date') return 'calendar';
   if (id === 'assignee') return 'person';
-  if (id === 'attachment') return 'paperclip';
   if (id === 'priority') return 'flag';
   if (id === 'reminders') return 'alarm';
-  if (id === 'deadline') return 'deadline';
   return 'tagLine';
 }
 

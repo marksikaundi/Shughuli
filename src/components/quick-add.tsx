@@ -52,6 +52,7 @@ export function QuickAdd({ onClose, bottomInset, initialDate = '' }: { onClose: 
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [dateOpen, setDateOpen] = useState(false);
+  const [remind, setRemind] = useState(false);
   const [busy, setBusy] = useState(false);
   const today = todayKey();
   const tomorrow = shiftKey(today, 1);
@@ -71,6 +72,7 @@ export function QuickAdd({ onClose, bottomInset, initialDate = '' }: { onClose: 
         project,
         tags: tag.trim() ? [tag.trim()] : [],
         people: person ? [person] : [],
+        remind,
       });
       onClose();
     } catch (error) {
@@ -82,7 +84,11 @@ export function QuickAdd({ onClose, bottomInset, initialDate = '' }: { onClose: 
   const dateLabel = dateChipLabel(date, dateChosen, time, today, tomorrow, timeFormat, text.today, text.tomorrow, text.dueDate);
 
   function openAction(id: QuickAddAction) {
-    if (id === 'date' || id === 'deadline') {
+    if (id === 'reminders') {
+      setRemind((on) => !on);
+      return;
+    }
+    if (id === 'date') {
       setProjectsOpen(false);
       setPriorityOpen(false);
       setTagOpen(false);
@@ -227,6 +233,21 @@ export function QuickAdd({ onClose, bottomInset, initialDate = '' }: { onClose: 
               key={id}
               id={id}
               labeled={showLabels}
+              active={
+                id === 'date'
+                  ? dateChosen || time !== null
+                  : id === 'assignee'
+                    ? person !== null
+                    : id === 'labels'
+                      ? tag.trim().length > 0
+                      : id === 'priority'
+                        ? priority !== priorityDefault
+                        : id === 'reminders'
+                          ? remind
+                          : id === 'project'
+                            ? project !== ''
+                            : false
+              }
               label={actionChipLabel(id, {
                 project,
                 inbox: text.inbox,
@@ -234,9 +255,7 @@ export function QuickAdd({ onClose, bottomInset, initialDate = '' }: { onClose: 
                 priority: text.priority,
                 labels: tag || text.labels,
                 assignee: person ? PERSON_NAMES[person] : text.assignee,
-                attachment: text.attachment,
                 reminders: text.reminders,
-                deadline: text.deadline,
               })}
               onPress={() => openAction(id)}
             />
@@ -286,20 +305,25 @@ function actionChipLabel(id: QuickAddAction, labels: Record<QuickAddAction | 'in
 }
 
 function actionIcon(id: QuickAddAction): IconName {
-  if (id === 'date' || id === 'deadline') return id === 'deadline' ? 'deadline' : 'calendar';
+  if (id === 'date') return 'calendar';
   if (id === 'assignee') return 'person';
-  if (id === 'attachment') return 'paperclip';
   if (id === 'priority') return 'flag';
   if (id === 'reminders') return 'alarm';
   return 'tagLine';
 }
 
-function ActionChip({ id, label, labeled, onPress }: { id: QuickAddAction; label: string; labeled: boolean; onPress: () => void }) {
+function ActionChip({ id, label, labeled, active, onPress }: { id: QuickAddAction; label: string; labeled: boolean; active: boolean; onPress: () => void }) {
+  const tone = active ? Night.accent : Night.muted;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[styles.chip, !labeled && styles.chipIcon]}>
-      {id === 'project' ? <Text style={styles.hash}>#</Text> : <Icon name={actionIcon(id)} size={14} color={Night.muted} />}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      style={[styles.chip, !labeled && styles.chipIcon, active && styles.chipOn]}>
+      {id === 'project' ? <Text style={[styles.hash, { color: tone }]}>#</Text> : <Icon name={actionIcon(id)} size={14} color={tone} />}
       {labeled ? (
-        <Text style={styles.chipText} numberOfLines={1}>
+        <Text style={[styles.chipText, active && styles.chipTextOn]} numberOfLines={1}>
           {label}
         </Text>
       ) : null}
@@ -665,6 +689,12 @@ const styles = StyleSheet.create({
     width: 32,
     paddingHorizontal: 0,
     justifyContent: 'center',
+  },
+  chipOn: {
+    backgroundColor: Night.accentSoft,
+  },
+  chipTextOn: {
+    color: Night.accent,
   },
   chipText: {
     flexShrink: 1,

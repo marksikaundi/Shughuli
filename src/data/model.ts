@@ -38,6 +38,8 @@ export type Task = {
   subtasks: Subtask[];
   comments: TaskComment[];
   sectionId: string | null;
+  /** Notify at the task time even when automatic reminders are off. */
+  remind?: boolean;
 };
 
 export type TaskDraft = {
@@ -52,6 +54,7 @@ export type TaskDraft = {
   subtasks?: Subtask[];
   comments?: TaskComment[];
   sectionId?: string | null;
+  remind?: boolean;
 };
 
 export function todayKey() {
