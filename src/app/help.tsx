@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from '@/components/icon';
 import { Screen, useNightStatus } from '@/components/screen';
 import { Night } from '@/constants/night';
-import { openPlayStore } from '@/lib/play-update';
+import { openPlayReviews } from '@/lib/play-update';
 import { useCopy } from '@/lib/settings-copy';
 
 export default function HelpScreen() {
@@ -114,6 +114,23 @@ export default function HelpScreen() {
             </Pressable>
             <Text style={styles.note}>{text.helpFeedbackNote}</Text>
           </View>
+          {Platform.OS === 'android' ? (
+            <>
+              <View style={styles.line} />
+              <View style={styles.play}>
+                <Text style={styles.playTitle}>{text.helpPlayTitle}</Text>
+                <Text style={styles.feedbackBody}>{text.helpPlayBody}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={text.helpPlayReview}
+                  onPress={() => void openPlayReviews().catch(() => undefined)}
+                  style={({ pressed }) => [styles.review, pressed && styles.pressed]}>
+                  <Icon name="starFill" size={18} color={Night.accent} />
+                  <Text style={styles.reviewText}>{text.helpPlayReview}</Text>
+                </Pressable>
+              </View>
+            </>
+          ) : null}
         </View>
 
         <Text style={styles.section}>{text.helpMoreSection}</Text>
@@ -123,7 +140,6 @@ export default function HelpScreen() {
             label={text.remindersNotWorking}
             onPress={() => router.push({ pathname: '/settings/productivity', params: { part: 'reminders' } })}
           />
-          {Platform.OS === 'android' ? <LinkRow icon="star" label={text.rate} onPress={() => void openPlayStore()} /> : null}
           <LinkRow icon="lock" label={text.privacyPolicy} onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })} last />
         </View>
       </ScrollView>
@@ -280,6 +296,30 @@ const styles = StyleSheet.create({
   },
   sendText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 700,
+  },
+  play: {
+    padding: 16,
+    gap: 10,
+  },
+  playTitle: {
+    color: Night.text,
+    fontSize: 17,
+    fontWeight: 700,
+  },
+  review: {
+    minHeight: 50,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    borderColor: Night.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  reviewText: {
+    color: Night.accent,
     fontSize: 16,
     fontWeight: 700,
   },

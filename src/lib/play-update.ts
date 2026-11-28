@@ -24,6 +24,15 @@ export async function openPlayStore() {
   await Linking.openURL(PLAY_STORE_URL);
 }
 
+/** Opens the Play Store listing at its reviews, in the Play Store app when it is installed. */
+export async function openPlayReviews() {
+  try {
+    await Linking.openURL(`market://details?id=${ANDROID_PACKAGE}&showAllReviews=true`);
+  } catch {
+    await Linking.openURL(`${PLAY_STORE_URL}&showAllReviews=true`);
+  }
+}
+
 export async function readPlayUpdate() {
   const result = await checkForUpdate();
   return {
