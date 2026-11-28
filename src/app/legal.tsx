@@ -57,7 +57,6 @@ function pageFor(doc: string, text: SettingsCopy): { title: string; blocks: Bloc
   if (doc === 'security') return { title: text.securityPolicy, blocks: [{ body: text.securityBody }] };
   if (doc === 'licenses') return { title: text.acknowledgments, blocks: [{ body: text.licensesIntro }] };
   if (doc === 'website') return { title: text.visitSite, blocks: [{ body: text.websiteBody }] };
-  if (doc === 'inspiration') return { title: text.visitInspiration, blocks: [{ body: `${text.aboutMeaning}\n\n${text.aboutBody}` }] };
   if (doc === 'hiring') return { title: text.weAreHiring, blocks: [{ body: text.hiringBody }] };
   return { title: text.privacyPolicy, blocks: [{ body: text.privacyBody }] };
 }

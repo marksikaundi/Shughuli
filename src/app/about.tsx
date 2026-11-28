@@ -74,7 +74,7 @@ export default function AboutScreen() {
 
         <View style={[styles.card, styles.gap]}>
           <AboutRow icon="globe" label={text.visitSite} onPress={() => openDoc('website')} />
-          <AboutRow icon="sparkles" label={text.visitInspiration} onPress={() => openDoc('inspiration')} />
+          <AboutRow icon="sparkles" label={text.visitInspiration} onPress={() => router.push('/inspiration')} />
           <AboutRow icon="briefcase" label={text.weAreHiring} onPress={() => openDoc('hiring')} last />
         </View>
 
