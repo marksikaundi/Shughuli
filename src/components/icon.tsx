@@ -48,7 +48,7 @@ const ICONS = {
   download: { ios: 'square.and.arrow.down', android: 'download', web: 'download' },
   trash: { ios: 'trash', android: 'delete', web: 'delete' },
   info: { ios: 'info.circle', android: 'info', web: 'info' },
-  heart: { ios: 'heart', android: 'favorite', web: 'favorite' },
+  sparkles: { ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' },
   globe: { ios: 'globe', android: 'public', web: 'public' },
   timer: { ios: 'timer', android: 'timer', web: 'timer' },
   eyeOff: { ios: 'eye.slash', android: 'visibility_off', web: 'visibility_off' },
