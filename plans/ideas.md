@@ -4,3 +4,26 @@
 - Cross improvements of the app features and UI
 
 ACCESS DATA: src/data/release-notes.ts.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# What has been fixed
+
+- Introducing customizable icons
+- Whats new

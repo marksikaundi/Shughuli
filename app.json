@@ -132,7 +132,100 @@
           "recordAudioAndroid": false
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-alternate-app-icons",
+        [
+          {
+            "name": "Coral",
+            "ios": "./assets/app-icons/ios/coral.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/foreground-light.png",
+              "backgroundColor": "#E15B52"
+            }
+          },
+          {
+            "name": "Lime",
+            "ios": "./assets/app-icons/ios/lime.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/foreground-dark.png",
+              "backgroundColor": "#C8F06E"
+            }
+          },
+          {
+            "name": "Blue",
+            "ios": "./assets/app-icons/ios/blue.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/foreground-light.png",
+              "backgroundColor": "#5B8DEF"
+            }
+          },
+          {
+            "name": "Rose",
+            "ios": "./assets/app-icons/ios/rose.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/foreground-light.png",
+              "backgroundColor": "#E58B86"
+            }
+          },
+          {
+            "name": "Violet",
+            "ios": "./assets/app-icons/ios/violet.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/foreground-light.png",
+              "backgroundColor": "#A78BDB"
+            }
+          },
+          {
+            "name": "Moonstone",
+            "ios": "./assets/app-icons/ios/moonstone.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/foreground-light.png",
+              "backgroundColor": "#8AA4BE"
+            }
+          },
+          {
+            "name": "Tangerine",
+            "ios": "./assets/app-icons/ios/tangerine.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/foreground-light.png",
+              "backgroundColor": "#E39A45"
+            }
+          },
+          {
+            "name": "Lavender",
+            "ios": "./assets/app-icons/ios/lavender.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/foreground-light.png",
+              "backgroundColor": "#B7A4E6"
+            }
+          },
+          {
+            "name": "Blueberry",
+            "ios": "./assets/app-icons/ios/blueberry.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/foreground-light.png",
+              "backgroundColor": "#6E8FE8"
+            }
+          },
+          {
+            "name": "Kale",
+            "ios": "./assets/app-icons/ios/kale.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/foreground-light.png",
+              "backgroundColor": "#7DAF86"
+            }
+          },
+          {
+            "name": "Raspberry",
+            "ios": "./assets/app-icons/ios/raspberry.png",
+            "android": {
+              "foregroundImage": "./assets/app-icons/foreground-light.png",
+              "backgroundColor": "#E58B9A"
+            }
+          }
+        ]
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
