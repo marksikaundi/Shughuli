@@ -27,3 +27,4 @@ ACCESS DATA: src/data/release-notes.ts.
 
 - Introducing customizable icons
 - Whats new
+- inspiration 
