@@ -29,3 +29,4 @@ ACCESS DATA: src/data/release-notes.ts.
 - Whats new
 - Inspiration 
 - Reminders
+- HelpScreen
