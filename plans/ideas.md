@@ -24,9 +24,11 @@ ACCESS DATA: src/data/release-notes.ts.
 
 # What has been fixed
 
-- Introducing customizable icons
-- QuickAdd and Task components
-- Whats new
-- Inspiration 
-- Reminders
-- HelpScreen
+- UI with its functionalities(
+Introducing customizable icons,
+QuickAdd and Task components,
+Whats new,
+Inspiration,
+Reminders,
+HelpScreen
+)
