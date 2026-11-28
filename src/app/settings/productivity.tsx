@@ -1,9 +1,10 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Linking, Modal, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Modal, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
 import { Icon } from '@/components/icon';
+import { NightDialog } from '@/components/settings/night-dialog';
 import { NightCard, NightFoot, NightPage, NightSwitch } from '@/components/settings/night-page';
 import { clockMinutes, minutesToClock, useReminderToggle, useSave } from '@/components/settings/page';
 import { Night } from '@/constants/night';
@@ -128,6 +129,8 @@ function ReminderSettings() {
   const prefs = usePreferencesStore((state) => state.prefs);
   const save = useSave();
   const [sheet, setSheet] = useState<'via' | 'snooze' | 'automatic' | 'urgent' | null>(null);
+  const [dialog, setDialog] = useState<'help' | 'urgent' | null>(null);
+  const [allowed, setAllowed] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -135,6 +138,16 @@ function ReminderSettings() {
       void registerReminderActions();
     }, []),
   );
+
+  async function openHelp() {
+    if (Platform.OS !== 'web') {
+      const permission = await Notifications.getPermissionsAsync();
+      setAllowed(permission.status === 'granted');
+    } else {
+      setAllowed(false);
+    }
+    setDialog('help');
+  }
 
   async function openSystemSettings() {
     if (Platform.OS === 'web') return;
@@ -166,14 +179,33 @@ function ReminderSettings() {
       </NightCard>
       <Text style={styles.urgentNote}>
         {text.urgentFoot}{' '}
-        <Text style={styles.learn} onPress={() => Alert.alert(text.urgentReminders, text.aboutRemindersBody)}>
+        <Text style={styles.learn} onPress={() => setDialog('urgent')}>
           {text.learnMore}
         </Text>
       </Text>
 
-      <Pressable accessibilityRole="button" onPress={() => Alert.alert(text.remindersNotWorking, `${text.permissionDenied}\n\n${text.reminderFoot}`, [{ text: text.openSettingsApp, onPress: () => void Linking.openSettings() }, { text: text.close, style: 'cancel' }])}>
+      <Pressable accessibilityRole="button" onPress={() => void openHelp()}>
         <Text style={styles.help}>{text.remindersNotWorking}</Text>
       </Pressable>
+
+      <NightDialog
+        visible={dialog === 'help'}
+        icon="bell"
+        title={text.remindersNotWorking}
+        callout={{ ok: allowed, text: allowed ? text.notificationsOn : text.permissionDenied }}
+        paragraphs={[text.reminderFoot]}
+        primary={{ label: text.openSettingsApp, onPress: () => void Linking.openSettings() }}
+        closeLabel={text.close}
+        onClose={() => setDialog(null)}
+      />
+      <NightDialog
+        visible={dialog === 'urgent'}
+        icon="alarm"
+        title={text.urgentReminders}
+        paragraphs={[text.aboutRemindersBody]}
+        closeLabel={text.close}
+        onClose={() => setDialog(null)}
+      />
 
       <ChoiceSheet
         visible={sheet === 'via'}
@@ -337,6 +369,7 @@ function NotificationScreen() {
   const toggle = useReminderToggle();
   const [detail, setDetail] = useState<'morning' | 'evening' | 'projects' | 'email' | null>(null);
   const [soundOpen, setSoundOpen] = useState(false);
+  const [guide, setGuide] = useState(false);
   const soundLabel =
     prefs.notificationSound === 'chime' ? text.timerChime : prefs.notificationSound === 'bell' ? text.timerBell : prefs.notificationSound === 'none' ? text.timerSilent : text.soundSystem;
 
@@ -361,7 +394,7 @@ function NotificationScreen() {
             value={prefs.onboardingAssistant}
             onValueChange={(onboardingAssistant) => {
               void save({ onboardingAssistant });
-              if (onboardingAssistant) Alert.alert(text.onboardingAssistant, text.onboardingGuide);
+              if (onboardingAssistant) setGuide(true);
             }}
             trackColor={{ false: '#3A3A3A', true: Night.accent }}
             thumbColor={Night.text}
@@ -382,6 +415,14 @@ function NotificationScreen() {
         <ReminderRow label={text.sound} value={soundLabel} onPress={() => setSoundOpen(true)} />
         <NightSwitch label={text.vibration} value={prefs.notificationVibration} onChange={(value) => void toggle('notificationVibration', value)} last />
       </NightCard>
+      <NightDialog
+        visible={guide}
+        icon="sparkles"
+        title={text.onboardingAssistant}
+        paragraphs={[text.onboardingGuide]}
+        closeLabel={text.close}
+        onClose={() => setGuide(false)}
+      />
       <ChoiceSheet
         visible={soundOpen}
         title={text.sound}
