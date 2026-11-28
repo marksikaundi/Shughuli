@@ -36,6 +36,7 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
   const composeRequest = useComposerStore((state) => state.request);
   const clearComposer = useComposerStore((state) => state.clear);
   const [composing, setComposing] = useState(false);
+  const [handledRequest, setHandledRequest] = useState(0);
   const [keyboard, setKeyboard] = useState(0);
   const start = placeFab(0, Dimensions.get('window').height - 160, true);
   const [spot, setSpot] = useState(start);
@@ -71,9 +72,12 @@ export function FloatingTabBar({ state, descriptors, emitter, navigateToTab, ins
   ).current;
   if (!showAdd && composing) setComposing(false);
 
-  useEffect(() => {
-    if (composeRequest) setComposing(true);
-  }, [composeRequest]);
+  if (composeRequest && composeRequest.nonce !== handledRequest) {
+    setHandledRequest(composeRequest.nonce);
+    setComposing(true);
+  } else if (!composeRequest && handledRequest !== 0) {
+    setHandledRequest(0);
+  }
 
   useEffect(() => {
     const focused = state.routes[state.index];

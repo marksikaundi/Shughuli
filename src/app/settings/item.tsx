@@ -1,14 +1,16 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Image, Modal, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/icon';
 import { NightCard, NightFoot, NightPage } from '@/components/settings/night-page';
 import { useSave } from '@/components/settings/page';
 import { Night } from '@/constants/night';
 import { RELEASES } from '@/data/release-notes';
-import { APP_TINTS, appTintById, COLOR_THEMES, colorThemeById, QUICK_ADD_ACTIONS, QUICK_ADD_PRO, type AppTintId, type ColorThemeId, type QuickAddAction, type TabId, type ThemeChoice } from '@/data/preferences';
+import { APP_ICONS, appIconByName, type AppIconChoice } from '@/data/app-icons';
+import { COLOR_THEMES, colorThemeById, QUICK_ADD_ACTIONS, QUICK_ADD_PRO, type ColorThemeId, type QuickAddAction, type TabId, type ThemeChoice } from '@/data/preferences';
 import { fill } from '@/i18n/translate';
+import { appIconsAvailable, changeAppIcon, readAppIconName } from '@/lib/app-icons';
 import { useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
@@ -200,9 +202,21 @@ function HelpDialog({ visible, title, body, action, onClose }: { visible: boolea
 
 function AppIconPanel() {
   const text = useCopy();
-  const tint = usePreferencesStore((state) => state.prefs.appTint);
+  const activated = usePreferencesStore((state) => state.prefs.appIconsActivated);
   const save = useSave();
-  const names: Record<AppTintId, string> = {
+  const [current, setCurrent] = useState<string | null>(null);
+  const [available, setAvailable] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState('');
+  const [help, setHelp] = useState(false);
+  const helpButton = (
+    <Pressable accessibilityRole="button" accessibilityLabel={text.helpFeedback} onPress={() => setHelp(true)} style={styles.help}>
+      <Text style={styles.helpMark}>?</Text>
+    </Pressable>
+  );
+  const helpDialog = <HelpDialog visible={help} title={text.appIcon} body={text.appIconHelpBody} action={text.close} onClose={() => setHelp(false)} />;
+  const names: Record<AppIconChoice['id'], string> = {
+    default: text.appIconDefault,
     coral: text.tintCoral,
     lime: text.tintLime,
     blue: text.tintBlue,
@@ -216,32 +230,85 @@ function AppIconPanel() {
     raspberry: text.themeRaspberry,
   };
 
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const [ready, name] = await Promise.all([appIconsAvailable(), readAppIconName()]);
+      if (!alive) return;
+      setAvailable(ready);
+      setCurrent(name);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  async function choose(item: AppIconChoice) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await changeAppIcon(item.name);
+      setCurrent(item.name);
+      if (item.tint) await save({ appTint: item.tint });
+    } catch {
+      setFailure(available ? text.appIconFailed : text.appIconUnsupported);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!activated) {
+    return (
+      <NightPage title={text.appIcon} trailing={helpButton}>
+        <View style={styles.intro}>
+          <View style={styles.introArt}>
+            <Text style={[styles.sparkle, styles.sparkleLeft]}>✦</Text>
+            <Text style={[styles.sparkle, styles.sparkleRight]}>✦</Text>
+            <Text style={[styles.sparkle, styles.sparkleTop]}>✧</Text>
+            <Image source={APP_ICONS[3].image} style={[styles.introTile, styles.introTileBack, styles.introTileLeft]} />
+            <Image source={APP_ICONS[2].image} style={[styles.introTile, styles.introTileBack, styles.introTileRight]} />
+            <Image source={APP_ICONS[1].image} style={[styles.introTile, styles.introTileFront]} />
+          </View>
+          <Text style={styles.introTitle}>{text.appIconIntroTitle}</Text>
+          <Text style={styles.introBody}>{text.appIconIntroBody}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={text.appIconActivate}
+            onPress={() => void save({ appIconsActivated: true })}
+            style={({ pressed }) => [styles.activate, pressed && styles.pressed]}>
+            <Text style={styles.activateText}>{text.appIconActivate}</Text>
+          </Pressable>
+        </View>
+        {helpDialog}
+      </NightPage>
+    );
+  }
+
+  const selectedId = appIconByName(current).id;
+
   return (
-    <NightPage title={text.appIcon}>
-      <View style={styles.preview}>
-        <View style={[styles.mark, { backgroundColor: appTintById(tint).color }]}>
-          <Text style={styles.markLetter}>S</Text>
-        </View>
-        <Text style={styles.previewName}>{names[tint]}</Text>
+    <NightPage title={text.appIcon} trailing={helpButton}>
+      <View style={styles.iconGrid}>
+        {APP_ICONS.map((item) => {
+          const selected = selectedId === item.id;
+          return (
+            <Pressable
+              key={item.id}
+              accessibilityRole="button"
+              accessibilityLabel={names[item.id]}
+              accessibilityState={{ selected, busy }}
+              onPress={() => void choose(item)}
+              style={({ pressed }) => [styles.iconCell, pressed && styles.pressed]}>
+              <View style={[styles.iconRing, selected && styles.iconRingOn]}>
+                <Image source={item.image} style={styles.iconImage} />
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
-      <NightCard>
-        <View style={styles.swatches}>
-          {APP_TINTS.filter((item) => item.id === 'coral' || item.id === 'lime' || item.id === 'blue' || item.id === 'rose' || item.id === 'violet').map((item) => {
-            const selected = tint === item.id;
-            return (
-              <Pressable
-                key={item.id}
-                accessibilityRole="button"
-                accessibilityLabel={names[item.id]}
-                accessibilityState={{ selected }}
-                onPress={() => void save({ appTint: item.id })}
-                style={[styles.swatch, { backgroundColor: item.color }, selected && styles.swatchOn]}>
-              </Pressable>
-            );
-          })}
-        </View>
-      </NightCard>
-      <NightFoot>{text.appTintFoot}</NightFoot>
+      <NightFoot>{text.appIconFoot}</NightFoot>
+      {helpDialog}
+      <HelpDialog visible={failure !== ''} title={text.appIcon} body={failure} action={text.close} onClose={() => setFailure('')} />
     </NightPage>
   );
 }
@@ -612,43 +679,112 @@ function FeatureRow({ icon, title, body, last }: { icon: IconName; title: string
 }
 
 const styles = StyleSheet.create({
-  preview: {
-    marginTop: 28,
+  intro: {
+    marginTop: 16,
     alignItems: 'center',
+    paddingHorizontal: 8,
   },
-  mark: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+  introArt: {
+    width: '100%',
+    height: 190,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  markLetter: {
-    color: '#1A1A1A',
-    fontSize: 32,
-    fontWeight: 700,
+  introTile: {
+    position: 'absolute',
+    borderRadius: 28,
   },
-  previewName: {
-    marginTop: 12,
-    color: Night.text,
+  introTileFront: {
+    width: 116,
+    height: 116,
+    borderRadius: 30,
+  },
+  introTileBack: {
+    width: 84,
+    height: 84,
+    top: 74,
+    opacity: 0.85,
+  },
+  introTileLeft: {
+    left: '12%',
+    transform: [{ rotate: '-12deg' }],
+  },
+  introTileRight: {
+    right: '12%',
+    transform: [{ rotate: '12deg' }],
+  },
+  sparkle: {
+    position: 'absolute',
+    color: Night.accent,
+    fontSize: 22,
+  },
+  sparkleLeft: {
+    left: '16%',
+    top: 18,
+  },
+  sparkleRight: {
+    right: '14%',
+    top: 40,
     fontSize: 16,
+  },
+  sparkleTop: {
+    right: '34%',
+    top: 4,
+    fontSize: 14,
+  },
+  introTitle: {
+    marginTop: 20,
+    color: Night.text,
+    fontSize: 24,
+    fontWeight: 700,
+    textAlign: 'center',
+  },
+  introBody: {
+    marginTop: 12,
+    color: Night.muted,
+    fontSize: 16,
+    lineHeight: 23,
+    textAlign: 'center',
+  },
+  activate: {
+    marginTop: 28,
+    alignSelf: 'stretch',
+    minHeight: 52,
+    borderRadius: 14,
+    backgroundColor: Night.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activateText: {
+    color: '#FFFFFF',
+    fontSize: 17,
     fontWeight: 700,
   },
-  swatches: {
+  iconGrid: {
+    marginTop: 20,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingVertical: 18,
+    flexWrap: 'wrap',
   },
-  swatch: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
+  iconCell: {
+    width: '33.333%',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  iconRing: {
+    width: 100,
+    height: 100,
+    padding: 4,
+    borderRadius: Platform.OS === 'ios' ? 30 : 50,
+    borderWidth: 3,
     borderColor: 'transparent',
   },
-  swatchOn: {
+  iconRingOn: {
     borderColor: Night.text,
+  },
+  iconImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: Platform.OS === 'ios' ? 22 : 46,
   },
   version: {
     marginTop: 28,

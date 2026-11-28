@@ -95,6 +95,7 @@ export type Preferences = {
   dateFormat: DateFormat;
   lastBackupAt: string | null;
   appTint: AppTintId;
+  appIconsActivated: boolean;
   colorTheme: ColorThemeId;
   syncTheme: boolean;
   showTabLabels: boolean;
@@ -170,6 +171,7 @@ export const defaultPreferences: Preferences = {
   dateFormat: 'dmy',
   lastBackupAt: null,
   appTint: 'coral',
+  appIconsActivated: false,
   colorTheme: 'shughuli',
   syncTheme: true,
   showTabLabels: true,
@@ -283,6 +285,7 @@ export function sanitizePreferences(value: unknown): Preferences {
     dateFormat: oneOf(input.dateFormat, ['dmy', 'mdy', 'ymd'] as const, defaultPreferences.dateFormat),
     lastBackupAt: typeof input.lastBackupAt === 'string' ? input.lastBackupAt : null,
     appTint: oneOf(input.appTint, APP_TINTS.map((item) => item.id), defaultPreferences.appTint),
+    appIconsActivated: bool(input.appIconsActivated, defaultPreferences.appIconsActivated),
     colorTheme: oneOf(input.colorTheme, COLOR_THEMES.map((item) => item.id), defaultPreferences.colorTheme),
     syncTheme: bool(input.syncTheme, defaultPreferences.syncTheme),
     showTabLabels: bool(input.showTabLabels, defaultPreferences.showTabLabels),

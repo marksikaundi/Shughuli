@@ -61,7 +61,7 @@ export function SettingsHome({ onClose }: { onClose?: () => void }) {
 
         <View style={styles.card}>
           <SettingRow icon="help" label={text.helpFeedback} onPress={() => router.push('/about')} />
-          <SettingRow icon="info" label={text.aboutRow} onPress={() => router.push('/about')} />
+          <SettingRow icon="heart" label={text.aboutRow} onPress={() => router.push('/about')} />
           <SettingRow icon="gift" label={text.whatsNew} onPress={() => openItem('whatsNew')} last />
         </View>
       </ScrollView>
