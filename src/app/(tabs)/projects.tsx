@@ -10,7 +10,6 @@ import { TaskLine } from '@/components/task-line';
 import { ActivitySheet, TodayDisplaySheet, defaultTodayDisplay, type TodayDisplay, type TodaySorting } from '@/components/today-display';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
-import type { PersonId } from '@/data/people';
 import { startOfWeek, todayKey, useTasks, type Task } from '@/data/tasks';
 import { formatLocale } from '@/i18n/format';
 import type { WeekStart } from '@/lib/runtime-prefs';
@@ -18,13 +17,6 @@ import { fill, useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
-const PERSON_NAMES: Record<PersonId, string> = {
-  olivia: 'Olivia',
-  amira: 'Amira',
-  jules: 'Jules',
-  leo: 'Leo',
-  noah: 'Noah',
-};
 
 export default function TodayScreen() {
   useNightStatus();
@@ -319,7 +311,6 @@ function MonthGrid({ today, weekStartsOn }: { today: string; weekStartsOn: WeekS
 function filterTasks(tasks: Task[], display: TodayDisplay, today: string) {
   return tasks.filter((task) => {
     if (!display.showCompleted && task.status === 'done') return false;
-    if (display.assignee !== 'default' && !task.people.includes(display.assignee)) return false;
     if (display.priority !== 'all' && task.priority !== display.priority) return false;
     if (display.deadline === 'overdue') return task.date < today;
     if (display.deadline === 'today') return task.date === today;
@@ -337,20 +328,6 @@ function sortTasks(tasks: Task[], sorting: TodaySorting) {
 
 function groupTasks(tasks: Task[], display: TodayDisplay, labels: { none: string; high: string; medium: string; low: string }) {
   if (display.layout !== 'board' && display.grouping === 'none') return [{ id: 'all', title: '', tasks }];
-  if (display.grouping === 'assignee') {
-    const buckets = new Map<string, Task[]>();
-    for (const task of tasks) {
-      const key = task.people[0] ?? 'none';
-      const list = buckets.get(key) ?? [];
-      list.push(task);
-      buckets.set(key, list);
-    }
-    return [...buckets.entries()].map(([id, list]) => ({
-      id,
-      title: id === 'none' ? labels.none : PERSON_NAMES[id as PersonId],
-      tasks: list,
-    }));
-  }
   const titles = { high: labels.high, medium: labels.medium, low: labels.low };
   return (['high', 'medium', 'low'] as const)
     .map((id) => ({ id, title: titles[id], tasks: tasks.filter((task) => task.priority === id) }))

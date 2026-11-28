@@ -301,8 +301,6 @@ function eventToTask(event: Calendar.Event, index: number): Task {
     category: 'personal',
     project: '',
     tags: [],
-    people: [],
-    extraPeople: 0,
     scheduled: true,
     starred: false,
     kind: 'task',

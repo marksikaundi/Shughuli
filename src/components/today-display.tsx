@@ -4,14 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
 import { Night } from '@/constants/night';
-import type { PersonId } from '@/data/people';
 import { formatClock, type Task } from '@/data/tasks';
 import { useCopy } from '@/lib/settings-copy';
 
 export type TodayLayout = 'list' | 'board' | 'calendar';
-export type TodayGrouping = 'none' | 'priority' | 'assignee';
+export type TodayGrouping = 'none' | 'priority';
 export type TodaySorting = 'smart' | 'name' | 'priority';
-export type TodayAssignee = 'default' | PersonId;
 export type TodaySpan = 'all' | 'today' | 'week' | 'overdue';
 export type TodayPriority = 'all' | 'high' | 'medium' | 'low';
 export type TodayFeedback = 'checkmark' | 'none';
@@ -22,7 +20,6 @@ export type TodayDisplay = {
   feedback: TodayFeedback;
   grouping: TodayGrouping;
   sorting: TodaySorting;
-  assignee: TodayAssignee;
   deadline: TodaySpan;
   priority: TodayPriority;
 };
@@ -33,20 +30,11 @@ export const defaultTodayDisplay: TodayDisplay = {
   feedback: 'checkmark',
   grouping: 'none',
   sorting: 'smart',
-  assignee: 'default',
   deadline: 'all',
   priority: 'all',
 };
 
-const PEOPLE: { id: PersonId; name: string }[] = [
-  { id: 'olivia', name: 'Olivia' },
-  { id: 'amira', name: 'Amira' },
-  { id: 'jules', name: 'Jules' },
-  { id: 'leo', name: 'Leo' },
-  { id: 'noah', name: 'Noah' },
-];
-
-type Page = null | 'feedback' | 'grouping' | 'sorting' | 'assignee' | 'deadline' | 'priority';
+type Page = null | 'feedback' | 'grouping' | 'sorting' | 'deadline' | 'priority';
 
 export function TodayDisplaySheet({
   value,
@@ -64,8 +52,7 @@ export function TodayDisplaySheet({
   const spanLabel = (span: TodaySpan) => (span === 'today' ? text.today : span === 'week' ? text.thisWeek : span === 'overdue' ? text.overdue : text.all);
   const priorityLabel = (priority: TodayPriority) =>
     priority === 'high' ? text.highPriority : priority === 'medium' ? text.mediumPriority : priority === 'low' ? text.lowPriority : text.all;
-  const assigneeLabel = draft.assignee === 'default' ? text.defaultOption : PEOPLE.find((person) => person.id === draft.assignee)?.name ?? text.defaultOption;
-  const groupingLabel = draft.grouping === 'priority' ? text.priority : draft.grouping === 'assignee' ? text.assignee : text.none;
+  const groupingLabel = draft.grouping === 'priority' ? text.priority : text.none;
   const sortingLabel = draft.sorting === 'name' ? text.sortByName : draft.sorting === 'priority' ? text.priority : text.smart;
 
   return (
@@ -82,13 +69,11 @@ export function TodayDisplaySheet({
                 ? text.grouping
                 : page === 'sorting'
                   ? text.sorting
-                  : page === 'assignee'
-                    ? text.assignee
-                    : page === 'deadline'
-                      ? text.deadline
-                      : page === 'priority'
-                        ? text.priority
-                        : text.display}
+                  : page === 'deadline'
+                    ? text.deadline
+                    : page === 'priority'
+                      ? text.priority
+                      : text.display}
           </Text>
           {page ? (
             <View style={styles.roundSpacer} />
@@ -147,13 +132,6 @@ export function TodayDisplaySheet({
 
             <Text style={styles.label}>{text.filter}</Text>
             <View style={styles.card}>
-              <Pressable accessibilityRole="button" onPress={() => setPage('assignee')} style={styles.row}>
-                <Icon name="person" size={18} color={Night.muted} />
-                <Text style={styles.rowLabel}>{text.assignee}</Text>
-                <Text style={styles.value}>{assigneeLabel}</Text>
-                <Icon name="chevron" size={16} color={Night.faint} />
-              </Pressable>
-              <View style={styles.line} />
               <Pressable accessibilityRole="button" onPress={() => setPage('deadline')} style={styles.row}>
                 <Icon name="deadline" size={18} color={Night.muted} />
                 <Text style={styles.rowLabel}>{text.deadline}</Text>
@@ -189,7 +167,6 @@ export function TodayDisplaySheet({
                 options={[
                   { id: 'none', label: text.none },
                   { id: 'priority', label: text.priority },
-                  { id: 'assignee', label: text.assignee },
                 ]}
                 selected={draft.grouping}
                 onSelect={(grouping) => {
@@ -208,16 +185,6 @@ export function TodayDisplaySheet({
                 selected={draft.sorting}
                 onSelect={(sorting) => {
                   setDraft({ ...draft, sorting });
-                  setPage(null);
-                }}
-              />
-            ) : null}
-            {page === 'assignee' ? (
-              <Choice
-                options={[{ id: 'default' as const, label: text.defaultOption }, ...PEOPLE.map((person) => ({ id: person.id, label: person.name }))]}
-                selected={draft.assignee}
-                onSelect={(assignee) => {
-                  setDraft({ ...draft, assignee });
                   setPage(null);
                 }}
               />

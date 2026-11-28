@@ -7,7 +7,6 @@ import { migrateDb } from '@/db/migrate';
 import { taskTable } from '@/db/schema';
 import { addMinutes, type Priority, type Subtask, type Task, type TaskCategory, type TaskComment, type TaskDraft, type TaskKind, type TaskStatus } from '@/data/model';
 import { getCopy } from '@/i18n/translate';
-import type { PersonId } from '@/data/people';
 import { deleteAllNotes, deleteTaskNote, saveTaskNote } from '@/lib/notes';
 import { clearSyncedEvents, removeTaskFromCalendar, syncAllTasks, syncTaskToCalendar } from '@/lib/google-calendar';
 import { prepareReminders, scheduleTaskReminder } from '@/lib/reminders';
@@ -254,8 +253,6 @@ function toTask(row: typeof taskTable.$inferSelect): Task {
     category: row.category as TaskCategory,
     project: row.project,
     tags: JSON.parse(row.tags) as string[],
-    people: JSON.parse(row.people) as PersonId[],
-    extraPeople: row.extraPeople,
     scheduled: row.scheduled,
     starred: row.starred,
     kind: row.kind as TaskKind,
@@ -306,8 +303,9 @@ function taskValues(task: Task) {
     category: task.category,
     project: task.project,
     tags: JSON.stringify(task.tags),
-    people: JSON.stringify(task.people),
-    extraPeople: task.extraPeople,
+    // Kept only because the columns exist; the app no longer assigns tasks to people.
+    people: '[]',
+    extraPeople: 0,
     scheduled: task.scheduled,
     starred: task.starred,
     kind: task.kind,
@@ -329,8 +327,6 @@ function draftToTask(draft: TaskDraft): Task {
     category: 'work',
     project: draft.project,
     tags: draft.tags,
-    people: draft.people ?? [],
-    extraPeople: 0,
     scheduled: true,
     starred: false,
     kind: 'task',

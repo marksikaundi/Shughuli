@@ -548,7 +548,6 @@ function actionNames(text: ReturnType<typeof useCopy>): Record<QuickAddAction, s
   return {
     project: text.project,
     date: text.dueDate,
-    assignee: text.assignee,
     priority: text.priority,
     reminders: text.reminders,
     labels: text.labels,
@@ -563,7 +562,6 @@ function ActionMark({ id }: { id: QuickAddAction }) {
 
 function actionIcon(id: QuickAddAction): IconName {
   if (id === 'date') return 'calendar';
-  if (id === 'assignee') return 'person';
   if (id === 'priority') return 'flag';
   if (id === 'reminders') return 'alarm';
   return 'tagLine';

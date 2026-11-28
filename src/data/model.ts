@@ -1,4 +1,3 @@
-import type { PersonId } from '@/data/people';
 import { getRuntimePrefs, type DateFormat, type TimeFormat, type WeekStart } from '@/lib/runtime-prefs';
 
 export type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'done';
@@ -30,8 +29,6 @@ export type Task = {
   category: TaskCategory;
   project: string;
   tags: string[];
-  people: PersonId[];
-  extraPeople: number;
   scheduled: boolean;
   starred: boolean;
   kind: TaskKind;
@@ -50,7 +47,6 @@ export type TaskDraft = {
   priority: Priority;
   project: string;
   tags: string[];
-  people?: PersonId[];
   subtasks?: Subtask[];
   comments?: TaskComment[];
   sectionId?: string | null;

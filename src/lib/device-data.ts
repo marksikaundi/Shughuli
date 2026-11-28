@@ -8,7 +8,6 @@ import {
   type Preferences,
 } from '@/data/preferences';
 import type { Priority, Task, TaskCategory, TaskKind, TaskStatus } from '@/data/model';
-import { PEOPLE, type PersonId } from '@/data/people';
 import { getCopy } from '@/i18n/translate';
 import { clearPin } from '@/lib/app-lock';
 import { readAllNotes, writeNoteContents } from '@/lib/notes';
@@ -285,16 +284,13 @@ function normalizeTask(value: unknown): Task {
     category,
     project: typeof input.project === 'string' ? input.project : '',
     tags: Array.isArray(input.tags) ? input.tags.filter((tag): tag is string => typeof tag === 'string') : [],
-    people: Array.isArray(input.people)
-      ? input.people.filter((person): person is PersonId => typeof person === 'string' && person in PEOPLE)
-      : [],
-    extraPeople: typeof input.extraPeople === 'number' ? input.extraPeople : 0,
     scheduled: input.scheduled !== false,
     starred: input.starred === true,
     kind,
     subtasks: Array.isArray(input.subtasks) ? input.subtasks.flatMap(readBackupSubtask) : [],
     comments: Array.isArray(input.comments) ? input.comments.flatMap(readBackupComment) : [],
     sectionId: typeof input.sectionId === 'string' ? input.sectionId : null,
+    remind: input.remind === true,
   };
 }
 

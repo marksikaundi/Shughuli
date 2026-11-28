@@ -9,7 +9,6 @@ import { TaskLine } from '@/components/task-line';
 import { ActivitySheet, TodayDisplaySheet, defaultTodayDisplay, type TodayDisplay, type TodaySorting } from '@/components/today-display';
 import { Night } from '@/constants/night';
 import { Layout } from '@/constants/palette';
-import type { PersonId } from '@/data/people';
 import { startOfWeek, toDateKey, todayKey, useTasks, type Task } from '@/data/tasks';
 import { formatLocale } from '@/i18n/format';
 import { fill, useCopy } from '@/lib/settings-copy';
@@ -17,13 +16,6 @@ import { useComposerStore } from '@/store/composer';
 import { usePreferencesStore } from '@/store/preferences';
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
-const PERSON_NAMES: Record<PersonId, string> = {
-  olivia: 'Olivia',
-  amira: 'Amira',
-  jules: 'Jules',
-  leo: 'Leo',
-  noah: 'Noah',
-};
 
 export default function UpcomingScreen() {
   useNightStatus();
@@ -323,7 +315,6 @@ function MenuRow({ icon, label, onPress }: { icon: 'link' | 'select' | 'wave'; l
 
 function accepts(task: Task, display: TodayDisplay, today: string) {
   if (!display.showCompleted && task.status === 'done') return false;
-  if (display.assignee !== 'default' && !task.people.includes(display.assignee)) return false;
   if (display.priority !== 'all' && task.priority !== display.priority) return false;
   if (display.deadline === 'overdue') return task.date < today;
   if (display.deadline === 'today') return task.date === today;
@@ -338,20 +329,6 @@ function sortTasks(tasks: Task[], sorting: TodaySorting) {
 }
 
 function groupTasks(tasks: Task[], display: TodayDisplay, labels: { none: string; high: string; medium: string; low: string }) {
-  if (display.grouping === 'assignee') {
-    const buckets = new Map<string, Task[]>();
-    for (const task of tasks) {
-      const key = task.people[0] ?? 'none';
-      const list = buckets.get(key) ?? [];
-      list.push(task);
-      buckets.set(key, list);
-    }
-    return [...buckets.entries()].map(([id, list]) => ({
-      id,
-      title: id === 'none' ? labels.none : PERSON_NAMES[id as PersonId],
-      tasks: list,
-    }));
-  }
   const titles = { high: labels.high, medium: labels.medium, low: labels.low };
   return (['high', 'medium', 'low'] as const).map((id) => ({ id, title: titles[id], tasks: tasks.filter((task) => task.priority === id) }));
 }

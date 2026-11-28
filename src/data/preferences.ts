@@ -36,7 +36,7 @@ export const COLOR_THEMES = [
 export type AccentId = (typeof ACCENTS)[number]['id'];
 export type AppTintId = (typeof APP_TINTS)[number]['id'];
 export type ColorThemeId = (typeof COLOR_THEMES)[number]['id'];
-export const QUICK_ADD_ACTIONS = ['project', 'date', 'assignee', 'priority', 'reminders', 'labels'] as const;
+export const QUICK_ADD_ACTIONS = ['project', 'date', 'priority', 'reminders', 'labels'] as const;
 export const QUICK_ADD_PRO: readonly QuickAddAction[] = [];
 export type QuickAddAction = (typeof QUICK_ADD_ACTIONS)[number];
 export const TAB_IDS = ['inbox', 'today', 'upcoming', 'browse'] as const;
@@ -184,7 +184,7 @@ export const defaultPreferences: Preferences = {
   quickAddDate: true,
   quickAddLabels: true,
   quickAddDescription: false,
-  quickAddIncluded: ['project', 'date', 'assignee'],
+  quickAddIncluded: ['project', 'date'],
   quickAddSeen: false,
   homeView: 'today',
   syncHomeView: true,
@@ -322,9 +322,8 @@ function quickAddFields(input: Partial<Preferences>) {
           ...(input.quickAddDate === false ? [] : (['date'] as const)),
           ...(input.quickAddPriority === false ? [] : (['priority'] as const)),
         ])
-      : uniqueActions(['project', 'date', 'assignee']);
-  const legacy = base.join(',') === 'project,date' || base.join(',') === 'project,date,priority';
-  const included = !seen && legacy ? uniqueActions(['project', 'date', 'assignee']) : base;
+      : uniqueActions(['project', 'date']);
+  const included = base;
   if (!included.includes('project')) included.unshift('project');
   if (included[0] !== 'project') {
     included.splice(included.indexOf('project'), 1);
@@ -337,7 +336,7 @@ function quickAddFields(input: Partial<Preferences>) {
     quickAddPriority: included.includes('priority'),
     quickAddLabels: bool(input.quickAddLabels, defaultPreferences.quickAddLabels),
     quickAddDescription: bool(input.quickAddDescription, defaultPreferences.quickAddDescription),
-    quickAddSeen: seen || (!legacy),
+    quickAddSeen: seen,
   };
 }
 

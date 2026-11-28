@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { Palette, cardShadow } from '@/constants/palette';
-import { PEOPLE, type PersonId } from '@/data/people';
 import { formatClock, todayKey, type Task } from '@/data/tasks';
 import { fill, useCopy } from '@/lib/settings-copy';
 import { usePreferencesStore } from '@/store/preferences';
@@ -29,7 +28,6 @@ export function TaskSummaryCard({ task }: { task: Task }) {
             <Icon name={task.kind === 'meeting' ? 'video' : 'check'} size={14} color={Palette.muted} />
             <Text style={styles.kind}>{kind}</Text>
           </View>
-          <Avatars ids={task.people} />
         </View>
         <Text style={styles.title} numberOfLines={2}>
           {task.title}
@@ -42,25 +40,6 @@ export function TaskSummaryCard({ task }: { task: Task }) {
         <Icon name="forward" size={16} color={Palette.white} />
       </View>
     </Pressable>
-  );
-}
-
-function Avatars({ ids }: { ids: PersonId[] }) {
-  const shown = ids.filter((id) => PEOPLE[id]).slice(0, 3);
-  if (shown.length === 0) return null;
-  return (
-    <View style={styles.avatars}>
-      {shown.map((id, index) => (
-        <View
-          key={id}
-          style={[
-            styles.avatar,
-            { backgroundColor: PEOPLE[id].color, marginLeft: index === 0 ? 0 : -8, zIndex: shown.length - index },
-          ]}>
-          <Text style={[styles.initial, { color: PEOPLE[id].text }]}>{PEOPLE[id].initials.slice(0, 1)}</Text>
-        </View>
-      ))}
-    </View>
   );
 }
 
@@ -108,23 +87,6 @@ const styles = StyleSheet.create({
     color: Palette.muted,
     fontSize: 13,
     fontWeight: 600,
-  },
-  avatars: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: Palette.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  initial: {
-    fontSize: 10,
-    fontWeight: 700,
   },
   title: {
     color: Palette.ink,
