@@ -1,7 +1,6 @@
-import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/icon';
@@ -15,9 +14,6 @@ export default function HelpScreen() {
   const insets = useSafeAreaInsets();
   const text = useCopy();
   const [open, setOpen] = useState<number | null>(0);
-  const [message, setMessage] = useState('');
-  const ready = message.trim().length > 0;
-
   const answers = [
     { q: text.helpQ1, a: text.helpA1 },
     { q: text.helpQ2, a: text.helpA2 },
@@ -26,25 +22,10 @@ export default function HelpScreen() {
     { q: text.helpQ5, a: text.helpA5 },
   ];
 
-  async function sendFeedback() {
-    if (!ready) return;
-    const version = Constants.expoConfig?.version ?? '1.0.0';
-    const build = Constants.platform?.ios?.buildNumber ?? Constants.platform?.android?.versionCode;
-    const details = `Shughuli ${version}${build ? ` (${build})` : ''}\n${Platform.OS} ${Platform.Version}`;
-    try {
-      const result = await Share.share({ title: text.feedback, message: `${message.trim()}\n\n--\n${details}` });
-      if (result.action === Share.sharedAction) setMessage('');
-    } catch {
-      // The share sheet was closed or is not available. The message stays so it is not lost.
-    }
-  }
-
   return (
     <Screen tone="night">
       <ScrollView
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
         contentContainerStyle={{
           paddingTop: insets.top + 8,
           paddingBottom: insets.bottom + 36,
@@ -89,49 +70,22 @@ export default function HelpScreen() {
           })}
         </View>
 
-        <Text style={styles.section}>{text.helpFeedbackSection}</Text>
-        <View style={styles.card}>
-          <View style={styles.feedback}>
-            <Text style={styles.feedbackBody}>{text.helpFeedbackBody}</Text>
-            <TextInput
-              value={message}
-              onChangeText={setMessage}
-              placeholder={text.feedbackPlaceholder}
-              placeholderTextColor={Night.faint}
-              multiline
-              textAlignVertical="top"
-              style={styles.input}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={text.feedback}
-              accessibilityState={{ disabled: !ready }}
-              disabled={!ready}
-              onPress={() => void sendFeedback()}
-              style={({ pressed }) => [styles.send, !ready && styles.sendIdle, pressed && styles.pressed]}>
-              <Icon name="share" size={18} color="#FFFFFF" />
-              <Text style={styles.sendText}>{text.feedback}</Text>
-            </Pressable>
-            <Text style={styles.note}>{text.helpFeedbackNote}</Text>
+        {Platform.OS === 'android' ? (
+          <View style={[styles.card, styles.playCard]}>
+            <View style={styles.play}>
+              <Text style={styles.playTitle}>{text.helpPlayTitle}</Text>
+              <Text style={styles.playBody}>{text.helpPlayBody}</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={text.helpPlayReview}
+                onPress={() => void openPlayReviews().catch(() => undefined)}
+                style={({ pressed }) => [styles.review, pressed && styles.pressed]}>
+                <Icon name="starFill" size={18} color={Night.accent} />
+                <Text style={styles.reviewText}>{text.helpPlayReview}</Text>
+              </Pressable>
+            </View>
           </View>
-          {Platform.OS === 'android' ? (
-            <>
-              <View style={styles.line} />
-              <View style={styles.play}>
-                <Text style={styles.playTitle}>{text.helpPlayTitle}</Text>
-                <Text style={styles.feedbackBody}>{text.helpPlayBody}</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={text.helpPlayReview}
-                  onPress={() => void openPlayReviews().catch(() => undefined)}
-                  style={({ pressed }) => [styles.review, pressed && styles.pressed]}>
-                  <Icon name="starFill" size={18} color={Night.accent} />
-                  <Text style={styles.reviewText}>{text.helpPlayReview}</Text>
-                </Pressable>
-              </View>
-            </>
-          ) : null}
-        </View>
+        ) : null}
 
         <Text style={styles.section}>{text.helpMoreSection}</Text>
         <View style={styles.card}>
@@ -262,46 +216,17 @@ const styles = StyleSheet.create({
   rowLine: {
     marginLeft: 66,
   },
-  feedback: {
-    padding: 16,
-    gap: 12,
-  },
-  feedbackBody: {
-    color: Night.muted,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  input: {
-    minHeight: 110,
-    maxHeight: 220,
-    borderRadius: 14,
-    backgroundColor: Night.bg,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: Night.text,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  send: {
-    minHeight: 50,
-    borderRadius: 15,
-    backgroundColor: Night.accent,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  sendIdle: {
-    opacity: 0.4,
-  },
-  sendText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 700,
+  playCard: {
+    marginTop: 28,
   },
   play: {
     padding: 16,
     gap: 10,
+  },
+  playBody: {
+    color: Night.muted,
+    fontSize: 15,
+    lineHeight: 22,
   },
   playTitle: {
     color: Night.text,
@@ -322,11 +247,6 @@ const styles = StyleSheet.create({
     color: Night.accent,
     fontSize: 16,
     fontWeight: 700,
-  },
-  note: {
-    color: Night.faint,
-    fontSize: 13,
-    lineHeight: 19,
   },
   row: {
     minHeight: 56,
